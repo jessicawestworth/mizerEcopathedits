@@ -1,0 +1,491 @@
+---
+title: "Creating a Model Improved"
+format: html
+editor: visual
+---
+
+# Introduction
+
+This script demonstrates the construction of a Mizer model using the methodology outlined in the accompanying paper. It uses the tools provided by the \[mizerCalibrate\] package which facilitates the conversion of data into a mizer-compatible format and model. The example model represents an assemblage of species in the Celtic Sea, incorporating various sources of empirical data from Lauria et al., (2016), parameters estimates from FishBase (Froese and Pauly, 2024) using the rfishbase package (Boettiger, Lang, and Wainwright, 2012). Predation kernels are parameterised using stomach contents data (Murray, \[REFERENCE\]), and survey data originates from the IBTS and BTS surveys (ICES, 2017).
+
+*Note:* *This script does not include the manual steps needed to disaggregate species groups or to add any missing species that are required to fully align the model with the Fisheries Management Plan. These steps must be completed separately to ensure all target species are properly represented.*
+
+## Loading Packages
+
+Load in the required libraries and repositories required to build the following model.
+
+```{r}
+#| warning: false
+#| message: false
+#| results: 'hide'
+#Load in packages
+if(!require(rfishbase)) install.packages("rfishbase", dependencies = TRUE)
+library(rfishbase)
+library(mizer)  
+library(remotes)
+library(dplyr)
+library(here)
+
+#Load in repository
+remotes::install_github("jessicawestworth/mizerEcopathedits")
+remotes::install_github("sizespectrum/mizerExperimental")
+#Load in packages located within the repository
+#install.packages("mizerEcopath")
+library(mizerEcopath)
+library(mizerExperimental)
+```
+
+## Load in the Accompanying Data from the Repository into Your R Environment
+
+Load in the accompanying csv and rds files within the mizerEcopath repostiory into R objects. This data includes species parameters data taken from ecopath, diet data and fising data taken from Lauria et al. (2016), fishing data taken from STECF and Cefas observers, and finally biomass data taken from ICES IBTS/BTS.
+
+```{r}
+#| warning: false
+#| message: false
+#| results: 'hide'
+setwd("/Users/jessicawestworth/Desktop/Mizer Work/Projects/Mizer_FMP_EwE/Data")
+## 1.1 Species parameters 
+ecopath_params <- read.csv("Ecopath-Basic estimates.csv")
+# Lauria species params
+
+## 1.2 Diet data
+fits <- readRDS("stomach_data_fit.rds")  
+# [Reference]
+ecopath_diet <- read.csv("Ecopath-Diet composition.csv")  
+# Lauria diet proportions
+
+## 1.3 Fishing data
+catch <- read.csv("Ecopath-Fishing mortality rates.csv")  
+# Lauria fishing mortality
+landings_original <- readRDS("catch_landings.rds")  
+# Processed catches (STECF)
+landings <- readRDS("catch_with_observer.rds")  
+# Processed catches (STECF + Cefas observer)
+
+## 1.4 Survey biomass data
+df_s_B <- readRDS("survey_total_biomass.rds")
+# ICES IBTS/BTS
+```
+
+# 2) Data for a Non-Interacting Model
+
+## 2.1 Species Parameters
+
+In this first step we will be creating a species parameter object.
+
+First we specify which species to include in our model. For this example we have chosen the following species: herring, cod, haddock, whiting, blue whiting, hake, monkfish, horse mackerel, mackerel, plaice, megrim, and sole.
+
+All species parameters will go into a data frame that must have one row for each species and should have a column named 'species' that the contains the common name of the species. Additionally we will add a column named 'Scientific_name' containing the scientific names of the species. It is important this 'Scientific_name' column is included as it will allow us to easily extract species parameters from FishBase later on.
+
+```{r}
+#| warning: false
+#| message: false
+#| results: 'hide'
+species_map_lauria <- data.frame(
+    species = c("Herring", "Cod", "Haddock", "Whiting", "Blue whiting",
+                "Hake", "Monkfish", "Horse mackerel", "Mackerel", 
+                "Plaice", "Megrim", "Sole"),
+    Scientific_name = c("Clupea harengus", "Gadus morhua", 
+                        "Melanogrammus aeglefinus", 
+                        "Merlangius merlangus", 
+                        "Micromesistius poutassou", "Merluccius merluccius",
+                        "Lophius piscatorius", "Trachurus trachurus", 
+                        "Scomber scombrus", "Pleuronectes platessa", 
+                        "Lepidorhombus whiffiagonis", "Solea solea")
+)
+```
+
+In this tutorial we will introduce many new functions included in the MizerEcopath package, the first of which is \[fillDefaultsFromFishBase()\](add link to help file). This function provides a streamlined way of extracting a number of species parameters from FishBase. We can then specify which of these parameters we would like to remain in our species params data frame called 'sp'. In this case these species params include w_max, w_mat, a, b, age_mat, and Length.
+
+In addition to these species params from FishBase we will add four additional parameters which will have equivalent values across all species. These parameters include the exponent of consumption (n), the exponent of respiration (p), the exponent of mortality (d), and the conversion efficiency (alpha). The parameter value estimates of n, p and d are a result of metabolic and ecological theory \[see the online [mizer course](https://mizer.course.nov22.sizespectrum.org/understand/predation-growth-and-mortality.html) for more information\]. The parameter value estimate for alpha comes from the theory that 80% of assimilated food energy becomes biomass (Winberg, 1956) and is the default estimate in many ecopath models \[for more information see the Ecopath [User_Guide](https://www.researchgate.net/publication/267193103_Ecopath_with_Ecosim_A_User's_Guide)\].
+
+These four parameters are simply estimates, that may vary greatly from species to species. It is therefore recommended that in future steps when tuning your model you play around with these values within their recommended ranges as they may vary greatly from their estimated values.
+
+Recommended ranges include:
+
+-   n: 0.75 to 0.7
+
+-   p: 0.75 to 0.7
+
+-   d: -0.25 to -0.3
+
+-   alpha: carnivores 0.7 to 0.9, herbivores 0.4 to 0.6, and detrivores 0.2 to 0.3
+
+```{r}
+#| warning: false
+#| message: false
+#| results: 'hide'
+temp <- fillDefaultsFromFishBase(species_map_lauria)
+
+# Select and rename parameters
+sp <- temp %>%
+    select(species, w_max, w_mat, a, b, age_mat, K, Winf, Length) %>%
+    mutate(
+        n = 0.7, # Exponent of consumption (juvenile growth as feeding 
+                 # on resource)
+        p = 0.7, # Exponent of respiration (metabolism)
+        d = -0.3, # Exponent of mortality (in Mizer n - 1)
+        alpha = 0.8 # Ecopath default (conversion efficiency)
+    )
+colnames(sp)<-c("species","w_max","w_mat","a","b", "age_mat","k_vb","w_inf", "Length","n","p","d","alpha")
+```
+
+Adding the to values
+
+```{r}
+# Define the target species
+vbg_med <- popgrowth(species_list = species_map_lauria$Scientific_name, fields = c("Species", "to")) %>%
+  group_by(Species) %>%
+  summarise(t0 = median(to, na.rm = TRUE), .groups = "drop") %>%
+  mutate(species = c("Herring", "Cod", "Haddock", "Whiting", "Blue whiting",
+                     "Hake", "Monkfish", "Horse mackerel", "Mackerel",
+                     "Plaice", "Megrim", "Sole")) %>%
+  select(species, t0)
+sp<-left_join(sp,vbg_med, by = "species")
+```
+
+## 2.2 Hake Modifications
+
+We will also make some modifications to hake #insert paragraph explaining the justification and rational behind these changes.
+
+```{r}
+#| warning: false
+#| message: false
+#| results: 'hide'
+# 2.2 Hake modifications:
+# 1. Not enough younger Hake in size spectrum (see below)
+ecopath_params %>%
+    filter(Group.name %in% c("Hake", "Juvenile hake")) %>%
+    select(Group.name, Biomass = Biomass..t.km.2.)
+#w_mat <- filter(species_params(p), species == "Hake")$w_mat
+#getBiomass(p, max_w = w_mat)["Hake"] 
+#(needs the model already loaded to get p)
+#getBiomass(p, min_w = w_mat)["Hake"] 
+# There should be 3 times as much Juvenile hake as adults by biomass, 
+# but in our model there is 10 times as much adult biomass.
+
+# 2. Probable error in interaction matrix; adult Hake taken highly 
+# by Megrim, but not vice versa. This seems like a typo, and is 
+#reversed below (Hake eat Megrim). ecopath_diet[14,20] (Megrim eating Hake)
+#should be exchanged with ecopath_diet[18,16] (Hake eating Megrim)
+tmp <- ecopath_diet[14, 20]
+ecopath_diet[14, 20] <- ecopath_diet[18, 16]
+ecopath_diet[18, 16] <- tmp
+
+# 3. We can also modify n, p, and d for Hake 
+#(manually set d as n - 1); increasing them 
+#(see https://mizer.course.sizespectrum.org/understand/single-species-spectra.html
+#slope-of-juvenile-spectrum)
+
+# Set a new exponent for Hake
+hake_exp <- 0.65
+
+# Update Hake parameters: n and p become hake_exp and d is set to 
+#hake_exp - 1
+sp <- sp %>%
+    mutate(
+        n = ifelse(species == "Hake", hake_exp, n),
+        p = ifelse(species == "Hake", hake_exp, p),
+        d = ifelse(species == "Hake", hake_exp - 1, d)
+    )
+```
+
+## 2.3 Integrating Biomass, Production, and Consumption from Ecopath
+
+Ecopath data is currently not compatible with our species list as for certain species they specify juveniles and adults. As our size spectrum models follow species throughout all the sizes of their life, this is not necessary and therefore we will input both the juvenile and adult data for a species into a single species row within our params object. To do this we will create a dictionary between model species and Ecopath stanzas.
+
+```{r}
+#Create dictionary
+species_to_groups <- list(
+    "Herring" = "Herring",
+    "Cod" = c("Cod", "Juvenile cod"),
+    "Haddock" = c("Haddock", "Juvenile haddock"),
+    "Whiting" = c("Whiting", "Juvenile whiting"),
+    "Blue whiting" = c("Blue whiting", "Juvenile blue whiting"),
+    "Hake" = c("Hake", "Juvenile hake"),
+    "Monkfish" = c("Monkfish", "Juvenile monkfish"),
+    "Horse mackerel" = "Horse mackerel",
+    "Mackerel" = "Mackerel",
+    "Plaice" = c("Plaice", "Juvenile plaice"),
+    "Megrim" = c("Megrim", "Juvenile megrim"),
+    "Sole" = "Sole"
+)
+```
+
+Now we will add the Ecopath params including biomass (B) in tonnes per km², consumption per biomass (Q/B), and production per consumption (P/Q). These are passed to the function \[addEcopathParams()\] (add link to help page) which computes production per unit of biomass (P/B) internally from these estimates and stores these values in new columns in the species params data frame. The column names include biomass_observed, consumption_observed, production_observed, and ecopath_groups.
+
+*Note: This is not the same as matching full interspecific interactions — we’re importing only the overall species-level empirical rates, not species to species rates which are properties which only emerge once diets and predation kernels are specified.*
+
+```{r}
+# Use addEcopathParams to validate and add Ecopath parameters to Mizer species.
+sp <- addEcopathParams(sp, ecopath_params, species_to_groups)
+```
+
+## 2.4 Size Distribution of Landings
+
+In this section we will process size-resolved landings data, aggregated by species, length, and gear.
+
+First we will load our landings data and add required information and columns to make it mizer compatible. This includes adding a column called 'dl' which provides the bin width as well as an additional 'total' gear category.
+
+*Note: Monkfish are constructed from genus-level landings (Monkfish nei).*
+
+```{r}
+# View the current landings data structure
+head(landings)
+# Add column called 'dl' (bin width) to the current landings 
+# data frame, dl is defined as a bin width of 1 (1 cm), so that
+# the landings data match the mizer requirements
+landings$dl <- 1
+# Define 'gear' column in landings data frame as a character
+landings$gear <- as.character(landings$gear)
+# Rename row values of 'commercial' in the column 'gear' to 'total'
+landings$gear[landings$gear == "commercial"] <- "total"  
+
+# Summarise to one row per (species, gear, length)
+landings <- landings %>%
+    group_by(species, gear, length) %>%
+    summarise(
+        catch = sum(catch, na.rm = TRUE),
+        dl    = first(dl),
+        Scientific_name = first(Scientific_name),
+        English_name    = first(English_name),
+        .groups = "drop"
+    )
+
+# Correct case for Horse Mackerel
+landings <- landings %>%
+    mutate(species = ifelse(species == "Horse Mackerel", 
+                            "Horse mackerel", species))
+
+# Create a subset of total gear landings which excludes disaggregated gears
+landings_total <- subset(landings, gear == "total")
+
+# Save a copy of the processed landings
+#saveRDS(landings_total, here("Data", "processed_total_landings.rds"))
+#saveRDS(landings, here("Data", "processed_landings_gears.rds"))
+```
+
+Some of the catch data shows that the max weight of some species is larger than the max weight data we extracted from FishBase. For these species which have a larger maximum weight in their observed sizes in landings data, we update their max weight to the new higher value. This ensures no size classes are omitted due to larger observed sizes than those in FishBase.
+
+```{r}
+# Create a backup of species parameters before updating
+sp_backup <- sp  
+
+#Update species parameters
+sp <- landings |>
+    group_by(species) |>
+    summarise(max_observed_length = max(length + dl, na.rm = TRUE)) |>
+    right_join(sp, by = "species") |>
+    mutate(
+        max_observed_length = coalesce(max_observed_length, Length)
+    ) |>
+    mutate(
+        max_observed_weight = a * max_observed_length^b,
+        w_max = 1.2 * max_observed_weight,
+        w_repro_max = w_max
+    )
+```
+
+# 3) Creating a Non-Interacting Model
+
+## 3.1 Initial model
+
+In this next step we will take our species params object 'sp' and we will make it into a **non-interacting** model using the newAllometricParams() function. This function will add many new parameters to the species params of each species. You can view the species params table of the model simply by calling species_params(params_object). If you would like to observe specific columns call species_params(params_object)\|\>select(column1,column2).
+
+```{r}
+# Set up a multi-species size spectrum Mizer model with 200 size classes, 
+# and no interspecific interactions.
+p <- newAllometricParams(sp, no_w = 200)
+```
+
+Notice how metabolic respiration rate, feeding level, reproduction level, and the interaction resource are set to 0, and R_max and h are set to Inf, this makes the model non interacting.
+
+## 3.2 Fishing Mortality and Gear
+
+We will now integrate the catch data into the mizer model. To achieve this we need to calculate the total catch (C) per km squared per year. To do this we must first calculate the total fishing mortality (F) by summing catch across all fleets for each species. Once we have the total catch per km squared per year we can use the function addEcopathCatchTotal(). This function uses the catch data frame exported by Ecopath to set up gear parameters.
+
+```{r}
+# Calculate total fishing mortality (F) by summing across all fleets
+# for each species
+catch$totalF <- rowSums(catch[, -(1:2)], na.rm = TRUE)
+
+# Calculate total catch (C) per km squared per year by multiplying F by
+# biomass (B). Alternatively, use C directly if available.
+catch <- 
+    left_join(ecopath_params, catch, by = c("Group.name" = "Fleet.group")) |> 
+        mutate(TotalCatch..t.km..year. = totalF * Biomass..t.km.2.) |> 
+        select(Group.name, TotalCatch..t.km..year.)
+
+#Integrate catch data into the Mizer model by calculating catchability
+# as the ratio of the observed yield to the observed biomass. Default
+# gear parameters are added for an aggregated 'total' gear. 
+p <- addEcopathCatchTotal(p, catch)
+```
+
+## 3.3 Matching Model to Observations
+
+Adjust model parameters (search volume, max consumption rate, metabolic rate, external encounter rate) by a common factor to match observed growth rates using the \[matchGrowth()\](insert link to help guide) function. Next, calculate growth and death rates from current initial abundances to then obtain steady-state abundances using the \[steadySingleSpecies()\](insert link to help guide) function. Finally, adjust abundances of each species to match observations using the \[matchBiomasses()\](insert link to help guide) function.
+
+```{r}
+#| warning: false
+p <- p |>
+    matchGrowth() |>          # Match observed growth rates
+    steadySingleSpecies() |>  # Calculate steady-state abundances
+    matchBiomasses()          # Adjust species abundances to match
+                              # observed biomasses
+# Create a backup of the tuned model
+p_backup <- p
+```
+
+## 3.4 Matching catch and consumption
+
+Match the observed catches with modeled catches using the functions \[matchCatch()\](insert link to help guide). The matchCatch function adjusted various model parameters for species so that the model in steady state reproduces the observed catch size distribution, the observed yield and the observed production. It may have various trade offs between matching each of these, therefore it is possible to adjust the match stength of yield_lambda and production_lambda, which are by default set to 1. Match the model consumption to consumption observed using \[matchConsumption()\](insert link to help guide).
+
+```{r}
+#match the observed catch and consumption
+p <- p |>
+    matchCatch(catch = landings_total, yield_lambda = 1) |> 
+    # Match catches from landings data 
+    matchConsumption() # Match observed consumption (Q)
+
+#create an object containing the gear params from the model
+gp <- gear_params(p)
+
+#create a backup
+p_backup <- p
+```
+
+# 4) Prepare Data for Tuning Interactions
+
+Prepare the current data for tuning interactions by making the data structure mizer compatible.
+
+## 4.1 Diet Matrix
+
+Restructure the diet matrix to be compatible with mizer.
+
+```{r}
+# Restructure the diet matrix to be compatible with mizer.
+dm <- reduceEcopathDiet(sp, ecopath_diet, ecopath_params)
+```
+
+## 4.2 Catch Data
+
+```{r}
+# Rename 'catch' column in landings_total to 'count' for compatibility 
+# with tuneEcopath.
+# The function does not accept the column name 'catch'.
+landings_total$count <- landings_total$catch
+catch <- landings_total
+```
+
+## 4.3 Add Predation Kernels
+
+First we must ensure that the species orders for the predation kernel is the same as that used in our model. #why are we setting predation kernel type to power law from log normal, where are we getting these values from.
+
+```{r}
+# Reorder the species in the kernel data to that the species order 
+# matches that of the model
+fits <- species_map_lauria %>%
+    select(species, Scientific_name) %>%
+    left_join(fits, by = c("Scientific_name" = "species")) %>%
+    arrange(match(species, sp$species))
+
+sp <- species_params(p)
+
+# Define predation kernel parameters based on a power-law relationship.
+# These parameters describe the scaling of predation with body size.
+sp$pred_kernel_type <- "power_law"
+lambda <- 2  # Scaling exponent for predator-prey size relationship
+sp$kernel_exp <- fits$alpha + 4/3 - lambda  # Adjust predation exponent 
+# based on stomach contents data
+sp$kernel_l_l <- fits$ll  # Lower limit for predator-prey size ratio
+sp$kernel_u_l <- fits$ul  # Upper limit for predator-prey size ratio
+sp$kernel_l_r <- fits$lr  # Lower limit for prey-size refuge
+sp$kernel_u_r <- fits$ur  # Upper limit for prey-size refuge
+
+species_params(p)<-sp #added this code otherwise the kernels were not being inputted into the species parameters?
+
+gp <- gear_params(p)
+p_backup1<-p
+```
+
+# 5) Tuning the Model
+
+Now introducing tuneEcopath a shiny gadget which allows the tuning of the model. The parameters we will be focusing on tuning are the allometric exponents, alpha, and gear selectivity (L50, L25/L50). In hopes of matching the death rates tab to a allometric fit and ensuring the catch curves fit as nicely as possibly. Between each step press match. You will likely be toggling between the catch and death tabs often to see that a well matched curve does not case deviations too strongly from the mortality. We are trying to ensure that the mortality is for all intents and purposes fits this allometric curve if you see the warning : Warning: Implied negative external encounter rate for Hake. Setting it to zero. This may alter the steady state. This simply means that the current mortality curve deviates too strongly from the expected allometric relationship. This can be fixed by adjusting the parameters above.
+
+## 5.1 Tune in tuneEcopath()
+
+```{r}
+# For the moment simply press return
+p_unchanged_with_winf_t0 <- tuneEcopath(
+    p,
+    catch = catch, 
+    diet = dm,
+    preserve = "reproduction_level"
+)
+#saveRDS(p_unchanged_with_winf_t0, file = "/Users/jessicawestworth/Desktop/Mizer Work/Projects/mizerEcopathedits/data/unchanged_with_winf_t0.rds")
+p_unchanged_with_winf_t0<-readRDS("/Users/jessicawestworth/Desktop/Mizer Work/Projects/mizerEcopathedits/data/unchanged_with_winf_t0.rds")
+```
+
+## 5.2 Set Feeding Level
+
+```{r}
+# Set a baseline feeding level for species in the model.
+p_unchanged_with_winf_t0 <- setFeedingLevel(p_unchanged_with_winf_t0, 0.6) # Ken sets to 0.6, no obvious explanation
+```
+
+# 6) Turn on Interactions
+
+```{r}
+# Match the diet matrix with the Mizer model to enable predator-prey interactions.
+p_unchanged_with_winf_t0 <- matchDiet(p_unchanged_with_winf_t0, dm)
+    #Warning: Implied negative external encounter rate for Hake.
+        #Setting it to zero. This may alter the steady state.
+    #Warning: Implied negative external encounter rate for Whiting.
+        #Setting it to zero. This may alter the steady state.
+    #Warning: Implied negative external mortality rate for Haddock.
+        #Setting it to zero. This may alter the steady state.
+    #Warning: Implied negative external mortality rate for Hake. 
+        #Setting it to zero. This may alter the steady state.
+    #Warning: Implied negative external mortality rate for Horse mackerel.
+        #Setting it to zero. This may alter the steady state.
+    #Warning: Implied negative external mortality rate for Megrim. 
+        #Setting it to zero. This may alter the steady state.
+#Issues that need to be fixed for species include Hake, Whiting, Haddock, Horse mackerel and Megrim.
+```
+
+# Trials
+
+## Trial 1
+
+Tackling negative external mortality in hake and
+
+```{r}
+#Change parameter m, match production, and match yield to reduce the external mortality.
+p_trial1 <- tuneEcopath(
+    p,
+    catch = catch, 
+    diet = dm,
+    preserve = "reproduction_level"
+)
+#saveRDS(p_trial1, file = "/Users/jessicawestworth/Desktop/Mizer Work/Projects/mizerEcopathedits/data/trial1.rds")
+p_trial1<-readRDS("/Users/jessicawestworth/Desktop/Mizer Work/Projects/mizerEcopathedits/data/trial1.rds")
+
+# Set a baseline feeding level for species in the model.
+p_trial1 <- setFeedingLevel(p_trial1, 0.6) # Ken sets to 0.6, no obvious explanation
+
+# Match the diet matrix with the Mizer model to enable predator-prey interactions.
+p_trial1 <- matchDiet(p_trial1, dm)
+    #Warning: Implied negative external encounter rate for Hake.
+        #Setting it to zero. This may alter the steady state.
+    #Warning: Implied negative external encounter rate for Megrim.
+        #Setting it to zero. This may alter the steady state.
+```
+
+## Trial 2
+
+Next Step: Tackling negative external encounter rate (perhaps through amending growth curves.
+
+```{r}
+#
+```

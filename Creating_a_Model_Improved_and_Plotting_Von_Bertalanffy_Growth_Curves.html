@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Creating a Model Improved</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/quarto-html/quarto.js"></script>
+<script src="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/quarto-html/popper.min.js"></script>
+<script src="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Creating_a_Model_Improved_and_Plotting_Von_Bertalanffy_Growth_Curves_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Creating a Model Improved</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>This script demonstrates the construction of a Mizer model using the methodology outlined in the accompanying paper. It uses the tools provided by the [mizerCalibrate] package which facilitates the conversion of data into a mizer-compatible format and model. The example model represents an assemblage of species in the Celtic Sea, incorporating various sources of empirical data from Lauria et al., (2016), parameters estimates from FishBase (Froese and Pauly, 2024) using the rfishbase package (Boettiger, Lang, and Wainwright, 2012). Predation kernels are parameterised using stomach contents data (Murray, [REFERENCE]), and survey data originates from the IBTS and BTS surveys (ICES, 2017).</p>
+<p><em>Note:</em> <em>This script does not include the manual steps needed to disaggregate species groups or to add any missing species that are required to fully align the model with the Fisheries Management Plan. These steps must be completed separately to ensure all target species are properly represented.</em></p>
+<section id="loading-packages" class="level2">
+<h2 class="anchored" data-anchor-id="loading-packages">Loading Packages</h2>
+<p>Load in the required libraries and repositories required to build the following model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Load in packages</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="sc">!</span><span class="fu">require</span>(rfishbase)) <span class="fu">install.packages</span>(<span class="st">"rfishbase"</span>, <span class="at">dependencies =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rfishbase)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mizer)  </span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(remotes)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(here)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">#Load in repository</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">"jessicawestworth/mizerEcopathedits"</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">"sizespectrum/mizerExperimental"</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">#Load in packages located within the repository</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">#install.packages("mizerEcopath")</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mizerEcopath)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mizerExperimental)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="load-in-the-accompanying-data-from-the-repository-into-your-r-environment" class="level2">
+<h2 class="anchored" data-anchor-id="load-in-the-accompanying-data-from-the-repository-into-your-r-environment">Load in the Accompanying Data from the Repository into Your R Environment</h2>
+<p>Load in the accompanying csv and rds files within the mizerEcopath repostiory into R objects. This data includes species parameters data taken from ecopath, diet data and fising data taken from Lauria et al.&nbsp;(2016), fishing data taken from STECF and Cefas observers, and finally biomass data taken from ICES IBTS/BTS.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">setwd</span>(<span class="st">"/Users/jessicawestworth/Desktop/Mizer Work/Projects/Mizer_FMP_EwE/Data"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="do">## 1.1 Species parameters </span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>ecopath_params <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"Ecopath-Basic estimates.csv"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Lauria species params</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="do">## 1.2 Diet data</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>fits <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"stomach_data_fit.rds"</span>)  </span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co"># [Reference]</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>ecopath_diet <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"Ecopath-Diet composition.csv"</span>)  </span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Lauria diet proportions</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="do">## 1.3 Fishing data</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>catch <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"Ecopath-Fishing mortality rates.csv"</span>)  </span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Lauria fishing mortality</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>landings_original <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"catch_landings.rds"</span>)  </span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Processed catches (STECF)</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>landings <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"catch_with_observer.rds"</span>)  </span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Processed catches (STECF + Cefas observer)</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="do">## 1.4 Survey biomass data</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>df_s_B <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"survey_total_biomass.rds"</span>)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="co"># ICES IBTS/BTS</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="data-for-a-non-interacting-model" class="level1">
+<h1>2) Data for a Non-Interacting Model</h1>
+<section id="species-parameters" class="level2">
+<h2 class="anchored" data-anchor-id="species-parameters">2.1 Species Parameters</h2>
+<p>In this first step we will be creating a species parameter object.</p>
+<p>First we specify which species to include in our model. For this example we have chosen the following species: herring, cod, haddock, whiting, blue whiting, hake, monkfish, horse mackerel, mackerel, plaice, megrim, and sole.</p>
+<p>All species parameters will go into a data frame that must have one row for each species and should have a column named ‘species’ that the contains the common name of the species. Additionally we will add a column named ‘Scientific_name’ containing the scientific names of the species. It is important this ‘Scientific_name’ column is included as it will allow us to easily extract species parameters from FishBase later on.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>species_map_lauria <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">species =</span> <span class="fu">c</span>(<span class="st">"Herring"</span>, <span class="st">"Cod"</span>, <span class="st">"Haddock"</span>, <span class="st">"Whiting"</span>, <span class="st">"Blue whiting"</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                <span class="st">"Hake"</span>, <span class="st">"Monkfish"</span>, <span class="st">"Horse mackerel"</span>, <span class="st">"Mackerel"</span>, </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>                <span class="st">"Plaice"</span>, <span class="st">"Megrim"</span>, <span class="st">"Sole"</span>),</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">Scientific_name =</span> <span class="fu">c</span>(<span class="st">"Clupea harengus"</span>, <span class="st">"Gadus morhua"</span>, </span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"Melanogrammus aeglefinus"</span>, </span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"Merlangius merlangus"</span>, </span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"Micromesistius poutassou"</span>, <span class="st">"Merluccius merluccius"</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"Lophius piscatorius"</span>, <span class="st">"Trachurus trachurus"</span>, </span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"Scomber scombrus"</span>, <span class="st">"Pleuronectes platessa"</span>, </span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"Lepidorhombus whiffiagonis"</span>, <span class="st">"Solea solea"</span>)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>In this tutorial we will introduce many new functions included in the MizerEcopath package, the first of which is [fillDefaultsFromFishBase()](add link to help file). This function provides a streamlined way of extracting a number of species parameters from FishBase. We can then specify which of these parameters we would like to remain in our species params data frame called ‘sp’. In this case these species params include w_max, w_mat, a, b, age_mat, and Length.</p>
+<p>In addition to these species params from FishBase we will add four additional parameters which will have equivalent values across all species. These parameters include the exponent of consumption (n), the exponent of respiration (p), the exponent of mortality (d), and the conversion efficiency (alpha). The parameter value estimates of n, p and d are a result of metabolic and ecological theory [see the online <a href="https://mizer.course.nov22.sizespectrum.org/understand/predation-growth-and-mortality.html">mizer course</a> for more information]. The parameter value estimate for alpha comes from the theory that 80% of assimilated food energy becomes biomass (Winberg, 1956) and is the default estimate in many ecopath models [for more information see the Ecopath <a href="https://www.researchgate.net/publication/267193103_Ecopath_with_Ecosim_A_User's_Guide">User_Guide</a>].</p>
+<p>These four parameters are simply estimates, that may vary greatly from species to species. It is therefore recommended that in future steps when tuning your model you play around with these values within their recommended ranges as they may vary greatly from their estimated values.</p>
+<p>Recommended ranges include:</p>
+<ul>
+<li><p>n: 0.75 to 0.7</p></li>
+<li><p>p: 0.75 to 0.7</p></li>
+<li><p>d: -0.25 to -0.3</p></li>
+<li><p>alpha: carnivores 0.7 to 0.9, herbivores 0.4 to 0.6, and detrivores 0.2 to 0.3</p></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>temp <span class="ot">&lt;-</span> <span class="fu">fillDefaultsFromFishBase</span>(species_map_lauria)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Select and rename parameters</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>sp <span class="ot">&lt;-</span> temp <span class="sc">%&gt;%</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(species, w_max, w_mat, a, b, age_mat, K, Winf, Length) <span class="sc">%&gt;%</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>        <span class="at">n =</span> <span class="fl">0.7</span>, <span class="co"># Exponent of consumption (juvenile growth as feeding </span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>                 <span class="co"># on resource)</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        <span class="at">p =</span> <span class="fl">0.7</span>, <span class="co"># Exponent of respiration (metabolism)</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        <span class="at">d =</span> <span class="sc">-</span><span class="fl">0.3</span>, <span class="co"># Exponent of mortality (in Mizer n - 1)</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        <span class="at">alpha =</span> <span class="fl">0.8</span> <span class="co"># Ecopath default (conversion efficiency)</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(sp)<span class="ot">&lt;-</span><span class="fu">c</span>(<span class="st">"species"</span>,<span class="st">"w_max"</span>,<span class="st">"w_mat"</span>,<span class="st">"a"</span>,<span class="st">"b"</span>, <span class="st">"age_mat"</span>,<span class="st">"k_vb"</span>,<span class="st">"w_inf"</span>, <span class="st">"Length"</span>,<span class="st">"n"</span>,<span class="st">"p"</span>,<span class="st">"d"</span>,<span class="st">"alpha"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Adding the to values</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Define the target species</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>vbg_med <span class="ot">&lt;-</span> <span class="fu">popgrowth</span>(<span class="at">species_list =</span> species_map_lauria<span class="sc">$</span>Scientific_name, <span class="at">fields =</span> <span class="fu">c</span>(<span class="st">"Species"</span>, <span class="st">"to"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Species) <span class="sc">%&gt;%</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">t0 =</span> <span class="fu">median</span>(to, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">species =</span> <span class="fu">c</span>(<span class="st">"Herring"</span>, <span class="st">"Cod"</span>, <span class="st">"Haddock"</span>, <span class="st">"Whiting"</span>, <span class="st">"Blue whiting"</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>                     <span class="st">"Hake"</span>, <span class="st">"Monkfish"</span>, <span class="st">"Horse mackerel"</span>, <span class="st">"Mackerel"</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>                     <span class="st">"Plaice"</span>, <span class="st">"Megrim"</span>, <span class="st">"Sole"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(species, t0)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Joining with `by = join_by(SpecCode)`</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>sp<span class="ot">&lt;-</span><span class="fu">left_join</span>(sp,vbg_med, <span class="at">by =</span> <span class="st">"species"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="hake-modifications" class="level2">
+<h2 class="anchored" data-anchor-id="hake-modifications">2.2 Hake Modifications</h2>
+<p>We will also make some modifications to hake #insert paragraph explaining the justification and rational behind these changes.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 2.2 Hake modifications:</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Not enough younger Hake in size spectrum (see below)</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>ecopath_params <span class="sc">%&gt;%</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(Group.name <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Hake"</span>, <span class="st">"Juvenile hake"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(Group.name, <span class="at">Biomass =</span> Biomass..t.km.<span class="fl">2.</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co">#w_mat &lt;- filter(species_params(p), species == "Hake")$w_mat</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co">#getBiomass(p, max_w = w_mat)["Hake"] </span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co">#(needs the model already loaded to get p)</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co">#getBiomass(p, min_w = w_mat)["Hake"] </span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="co"># There should be 3 times as much Juvenile hake as adults by biomass, </span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="co"># but in our model there is 10 times as much adult biomass.</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Probable error in interaction matrix; adult Hake taken highly </span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co"># by Megrim, but not vice versa. This seems like a typo, and is </span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="co">#reversed below (Hake eat Megrim). ecopath_diet[14,20] (Megrim eating Hake)</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="co">#should be exchanged with ecopath_diet[18,16] (Hake eating Megrim)</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> ecopath_diet[<span class="dv">14</span>, <span class="dv">20</span>]</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>ecopath_diet[<span class="dv">14</span>, <span class="dv">20</span>] <span class="ot">&lt;-</span> ecopath_diet[<span class="dv">18</span>, <span class="dv">16</span>]</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>ecopath_diet[<span class="dv">18</span>, <span class="dv">16</span>] <span class="ot">&lt;-</span> tmp</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. We can also modify n, p, and d for Hake </span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="co">#(manually set d as n - 1); increasing them </span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="co">#(see https://mizer.course.sizespectrum.org/understand/single-species-spectra.html</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="co">#slope-of-juvenile-spectrum)</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Set a new exponent for Hake</span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>hake_exp <span class="ot">&lt;-</span> <span class="fl">0.65</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a><span class="co"># Update Hake parameters: n and p become hake_exp and d is set to </span></span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a><span class="co">#hake_exp - 1</span></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>sp <span class="ot">&lt;-</span> sp <span class="sc">%&gt;%</span></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>        <span class="at">n =</span> <span class="fu">ifelse</span>(species <span class="sc">==</span> <span class="st">"Hake"</span>, hake_exp, n),</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>        <span class="at">p =</span> <span class="fu">ifelse</span>(species <span class="sc">==</span> <span class="st">"Hake"</span>, hake_exp, p),</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>        <span class="at">d =</span> <span class="fu">ifelse</span>(species <span class="sc">==</span> <span class="st">"Hake"</span>, hake_exp <span class="sc">-</span> <span class="dv">1</span>, d)</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="integrating-biomass-production-and-consumption-from-ecopath" class="level2">
+<h2 class="anchored" data-anchor-id="integrating-biomass-production-and-consumption-from-ecopath">2.3 Integrating Biomass, Production, and Consumption from Ecopath</h2>
+<p>Ecopath data is currently not compatible with our species list as for certain species they specify juveniles and adults. As our size spectrum models follow species throughout all the sizes of their life, this is not necessary and therefore we will input both the juvenile and adult data for a species into a single species row within our params object. To do this we will create a dictionary between model species and Ecopath stanzas.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Create dictionary</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>species_to_groups <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Herring"</span> <span class="ot">=</span> <span class="st">"Herring"</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Cod"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"Cod"</span>, <span class="st">"Juvenile cod"</span>),</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Haddock"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"Haddock"</span>, <span class="st">"Juvenile haddock"</span>),</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Whiting"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"Whiting"</span>, <span class="st">"Juvenile whiting"</span>),</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Blue whiting"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"Blue whiting"</span>, <span class="st">"Juvenile blue whiting"</span>),</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Hake"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"Hake"</span>, <span class="st">"Juvenile hake"</span>),</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Monkfish"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"Monkfish"</span>, <span class="st">"Juvenile monkfish"</span>),</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Horse mackerel"</span> <span class="ot">=</span> <span class="st">"Horse mackerel"</span>,</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Mackerel"</span> <span class="ot">=</span> <span class="st">"Mackerel"</span>,</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Plaice"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"Plaice"</span>, <span class="st">"Juvenile plaice"</span>),</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Megrim"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"Megrim"</span>, <span class="st">"Juvenile megrim"</span>),</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Sole"</span> <span class="ot">=</span> <span class="st">"Sole"</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we will add the Ecopath params including biomass (B) in tonnes per km², consumption per biomass (Q/B), and production per consumption (P/Q). These are passed to the function [addEcopathParams()] (add link to help page) which computes production per unit of biomass (P/B) internally from these estimates and stores these values in new columns in the species params data frame. The column names include biomass_observed, consumption_observed, production_observed, and ecopath_groups.</p>
+<p><em>Note: This is not the same as matching full interspecific interactions — we’re importing only the overall species-level empirical rates, not species to species rates which are properties which only emerge once diets and predation kernels are specified.</em></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Use addEcopathParams to validate and add Ecopath parameters to Mizer species.</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>sp <span class="ot">&lt;-</span> <span class="fu">addEcopathParams</span>(sp, ecopath_params, species_to_groups)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="size-distribution-of-landings" class="level2">
+<h2 class="anchored" data-anchor-id="size-distribution-of-landings">2.4 Size Distribution of Landings</h2>
+<p>In this section we will process size-resolved landings data, aggregated by species, length, and gear.</p>
+<p>First we will load our landings data and add required information and columns to make it mizer compatible. This includes adding a column called ‘dl’ which provides the bin width as well as an additional ‘total’ gear category.</p>
+<p><em>Note: Monkfish are constructed from genus-level landings (Monkfish nei).</em></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># View the current landings data structure</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(landings)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 8
+# Groups:   species_code, length [3]
+  species_code length gear  catch Scientific_name English_name     species    dl
+  &lt;chr&gt;         &lt;dbl&gt; &lt;chr&gt; &lt;dbl&gt; &lt;chr&gt;           &lt;chr&gt;            &lt;chr&gt;   &lt;dbl&gt;
+1 ANF              14 beam    103 Lophiidae       Anglerfishes nei Monkfi…     1
+2 ANF              14 otter   365 Lophiidae       Anglerfishes nei Monkfi…     1
+3 ANF              15 beam   1741 Lophiidae       Anglerfishes nei Monkfi…     1
+4 ANF              15 otter   530 Lophiidae       Anglerfishes nei Monkfi…     1
+5 ANF              16 beam   2158 Lophiidae       Anglerfishes nei Monkfi…     1
+6 ANF              16 otter  4280 Lophiidae       Anglerfishes nei Monkfi…     1</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Add column called 'dl' (bin width) to the current landings </span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># data frame, dl is defined as a bin width of 1 (1 cm), so that</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co"># the landings data match the mizer requirements</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>landings<span class="sc">$</span>dl <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Define 'gear' column in landings data frame as a character</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>landings<span class="sc">$</span>gear <span class="ot">&lt;-</span> <span class="fu">as.character</span>(landings<span class="sc">$</span>gear)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Rename row values of 'commercial' in the column 'gear' to 'total'</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>landings<span class="sc">$</span>gear[landings<span class="sc">$</span>gear <span class="sc">==</span> <span class="st">"commercial"</span>] <span class="ot">&lt;-</span> <span class="st">"total"</span>  </span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Summarise to one row per (species, gear, length)</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>landings <span class="ot">&lt;-</span> landings <span class="sc">%&gt;%</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(species, gear, length) <span class="sc">%&gt;%</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>        <span class="at">catch =</span> <span class="fu">sum</span>(catch, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>        <span class="at">dl    =</span> <span class="fu">first</span>(dl),</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>        <span class="at">Scientific_name =</span> <span class="fu">first</span>(Scientific_name),</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>        <span class="at">English_name    =</span> <span class="fu">first</span>(English_name),</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">.groups =</span> <span class="st">"drop"</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Correct case for Horse Mackerel</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>landings <span class="ot">&lt;-</span> landings <span class="sc">%&gt;%</span></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">species =</span> <span class="fu">ifelse</span>(species <span class="sc">==</span> <span class="st">"Horse Mackerel"</span>, </span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>                            <span class="st">"Horse mackerel"</span>, species))</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a subset of total gear landings which excludes disaggregated gears</span></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>landings_total <span class="ot">&lt;-</span> <span class="fu">subset</span>(landings, gear <span class="sc">==</span> <span class="st">"total"</span>)</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a><span class="co"># Save a copy of the processed landings</span></span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a><span class="co">#saveRDS(landings_total, here("Data", "processed_total_landings.rds"))</span></span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a><span class="co">#saveRDS(landings, here("Data", "processed_landings_gears.rds"))</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Some of the catch data shows that the max weight of some species is larger than the max weight data we extracted from FishBase. For these species which have a larger maximum weight in their observed sizes in landings data, we update their max weight to the new higher value. This ensures no size classes are omitted due to larger observed sizes than those in FishBase.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a backup of species parameters before updating</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>sp_backup <span class="ot">&lt;-</span> sp  </span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co">#Update species parameters</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>sp <span class="ot">&lt;-</span> landings <span class="sc">|&gt;</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(species) <span class="sc">|&gt;</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">max_observed_length =</span> <span class="fu">max</span>(length <span class="sc">+</span> dl, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">right_join</span>(sp, <span class="at">by =</span> <span class="st">"species"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>        <span class="at">max_observed_length =</span> <span class="fu">coalesce</span>(max_observed_length, Length)</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>        <span class="at">max_observed_weight =</span> a <span class="sc">*</span> max_observed_length<span class="sc">^</span>b,</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>        <span class="at">w_max =</span> <span class="fl">1.2</span> <span class="sc">*</span> max_observed_weight,</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>        <span class="at">w_repro_max =</span> w_max</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="creating-a-non-interacting-model" class="level1">
+<h1>3) Creating a Non-Interacting Model</h1>
+<section id="initial-model" class="level2">
+<h2 class="anchored" data-anchor-id="initial-model">3.1 Initial model</h2>
+<p>In this next step we will take our species params object ‘sp’ and we will make it into a <strong>non-interacting</strong> model using the newAllometricParams() function. This function will add many new parameters to the species params of each species. You can view the species params table of the model simply by calling species_params(params_object). If you would like to observe specific columns call species_params(params_object)|&gt;select(column1,column2).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set up a multi-species size spectrum Mizer model with 200 size classes, </span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="co"># and no interspecific interactions.</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">newAllometricParams</span>(sp, <span class="at">no_w =</span> <span class="dv">200</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Notice how metabolic respiration rate, feeding level, reproduction level, and the interaction resource are set to 0, and R_max and h are set to Inf, this makes the model non interacting.</p>
+</section>
+<section id="fishing-mortality-and-gear" class="level2">
+<h2 class="anchored" data-anchor-id="fishing-mortality-and-gear">3.2 Fishing Mortality and Gear</h2>
+<p>We will now integrate the catch data into the mizer model. To achieve this we need to calculate the total catch (C) per km squared per year. To do this we must first calculate the total fishing mortality (F) by summing catch across all fleets for each species. Once we have the total catch per km squared per year we can use the function addEcopathCatchTotal(). This function uses the catch data frame exported by Ecopath to set up gear parameters.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate total fishing mortality (F) by summing across all fleets</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="co"># for each species</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>catch<span class="sc">$</span>totalF <span class="ot">&lt;-</span> <span class="fu">rowSums</span>(catch[, <span class="sc">-</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>)], <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate total catch (C) per km squared per year by multiplying F by</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="co"># biomass (B). Alternatively, use C directly if available.</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>catch <span class="ot">&lt;-</span> </span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(ecopath_params, catch, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"Group.name"</span> <span class="ot">=</span> <span class="st">"Fleet.group"</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>        <span class="fu">mutate</span>(<span class="at">TotalCatch..t.km..year. =</span> totalF <span class="sc">*</span> Biomass..t.km.<span class="fl">2.</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>        <span class="fu">select</span>(Group.name, TotalCatch..t.km..year.)</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a><span class="co">#Integrate catch data into the Mizer model by calculating catchability</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="co"># as the ratio of the observed yield to the observed biomass. Default</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="co"># gear parameters are added for an aggregated 'total' gear. </span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">addEcopathCatchTotal</span>(p, catch)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="matching-model-to-observations" class="level2">
+<h2 class="anchored" data-anchor-id="matching-model-to-observations">3.3 Matching Model to Observations</h2>
+<p>Adjust model parameters (search volume, max consumption rate, metabolic rate, external encounter rate) by a common factor to match observed growth rates using the [matchGrowth()](insert link to help guide) function. Next, calculate growth and death rates from current initial abundances to then obtain steady-state abundances using the [steadySingleSpecies()](insert link to help guide) function. Finally, adjust abundances of each species to match observations using the [matchBiomasses()](insert link to help guide) function.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> p <span class="sc">|&gt;</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">matchGrowth</span>() <span class="sc">|&gt;</span>          <span class="co"># Match observed growth rates</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">steadySingleSpecies</span>() <span class="sc">|&gt;</span>  <span class="co"># Calculate steady-state abundances</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">matchBiomasses</span>()          <span class="co"># Adjust species abundances to match</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>                              <span class="co"># observed biomasses</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a backup of the tuned model</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>p_backup <span class="ot">&lt;-</span> p</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="matching-catch-and-consumption" class="level2">
+<h2 class="anchored" data-anchor-id="matching-catch-and-consumption">3.4 Matching catch and consumption</h2>
+<p>Match the observed catches with modeled catches using the functions [matchCatch()](insert link to help guide). The matchCatch function adjusted various model parameters for species so that the model in steady state reproduces the observed catch size distribution, the observed yield and the observed production. It may have various trade offs between matching each of these, therefore it is possible to adjust the match stength of yield_lambda and production_lambda, which are by default set to 1. Match the model consumption to consumption observed using [matchConsumption()](insert link to help guide).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co">#match the observed catch and consumption</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> p <span class="sc">|&gt;</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">matchCatch</span>(<span class="at">catch =</span> landings_total, <span class="at">yield_lambda =</span> <span class="dv">1</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Match catches from landings data </span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">matchConsumption</span>() <span class="co"># Match observed consumption (Q)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Blue whiting] = 0.235; erepro[Megrim] = 0.0118</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Mackerel] = 0.00214</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Cod] = 0.00135; erepro[Hake] = 0.26; erepro[Herring] = 0.00785; erepro[Megrim] = 0.0118</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Blue whiting] = 0.235; erepro[Haddock] = 9.39e-05; erepro[Herring] = 0.00785; erepro[Mackerel] = 0.00214</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Cod] = 0.00135; erepro[Hake] = 0.000494; erepro[Herring] = 0.0855</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Blue whiting] = 0.235; erepro[Hake] = 0.000494; erepro[Herring] = 0.0855; erepro[Horse mackerel] = 0.0051; erepro[Mackerel] = 0.00214</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Cod] = 0.00135; erepro[Hake] = 0.000494; erepro[Horse mackerel] = 0.0051</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Blue whiting] = 0.235; erepro[Hake] = 0.000494</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Cod] = 0.00135; erepro[Hake] = 0.000494; erepro[Herring] = 0.0855; erepro[Horse mackerel] = 0.0051; erepro[Megrim] = 0.000121; erepro[Monkfish] = 0.143</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Blue whiting] = 0.235; erepro[Hake] = 0.000494; erepro[Monkfish] = 0.143; erepro[Plaice] = 0.0174</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Cod] = 0.00135; erepro[Hake] = 0.000494; erepro[Herring] = 0.0855; erepro[Horse mackerel] = 0.0051; erepro[Monkfish] = 0.143; erepro[Plaice] = 0.0174; erepro[Sole] = 0.00644</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in max(w[w &lt;= min(w_bin_boundaries)]): no non-missing arguments to max;
+returning -Inf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(params): For the following species `erepro` has been increased to the smallest possible value: erepro[Blue whiting] = 0.235; erepro[Hake] = 0.000494; erepro[Monkfish] = 0.143; erepro[Sole] = 0.00644; erepro[Whiting] = 0.0424</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in matchConsumption(matchCatch(p, catch = landings_total, yield_lambda
+= 1)): Perfect match to Ecopath consumption not possible for: Mackerel because
+it would lead to a low metabolic rate of less than 10% of the production rate.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="co">#create an object containing the gear params from the model</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a>gp <span class="ot">&lt;-</span> <span class="fu">gear_params</span>(p)</span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a><span class="co">#create a backup</span></span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a>p_backup <span class="ot">&lt;-</span> p</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="prepare-data-for-tuning-interactions" class="level1">
+<h1>4) Prepare Data for Tuning Interactions</h1>
+<p>Prepare the current data for tuning interactions by making the data structure mizer compatible.</p>
+<section id="diet-matrix" class="level2">
+<h2 class="anchored" data-anchor-id="diet-matrix">4.1 Diet Matrix</h2>
+<p>Restructure the diet matrix to be compatible with mizer.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Restructure the diet matrix to be compatible with mizer.</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>dm <span class="ot">&lt;-</span> <span class="fu">reduceEcopathDiet</span>(sp, ecopath_diet, ecopath_params)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="catch-data" class="level2">
+<h2 class="anchored" data-anchor-id="catch-data">4.2 Catch Data</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Rename 'catch' column in landings_total to 'count' for compatibility </span></span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a><span class="co"># with tuneEcopath.</span></span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a><span class="co"># The function does not accept the column name 'catch'.</span></span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>landings_total<span class="sc">$</span>count <span class="ot">&lt;-</span> landings_total<span class="sc">$</span>catch</span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>catch <span class="ot">&lt;-</span> landings_total</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="add-predation-kernels" class="level2">
+<h2 class="anchored" data-anchor-id="add-predation-kernels">4.3 Add Predation Kernels</h2>
+<p>First we must ensure that the species orders for the predation kernel is the same as that used in our model. #why are we setting predation kernel type to power law from log normal, where are we getting these values from.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Reorder the species in the kernel data to that the species order </span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a><span class="co"># matches that of the model</span></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>fits <span class="ot">&lt;-</span> species_map_lauria <span class="sc">%&gt;%</span></span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(species, Scientific_name) <span class="sc">%&gt;%</span></span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(fits, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"Scientific_name"</span> <span class="ot">=</span> <span class="st">"species"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(<span class="fu">match</span>(species, sp<span class="sc">$</span>species))</span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a>sp <span class="ot">&lt;-</span> <span class="fu">species_params</span>(p)</span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Define predation kernel parameters based on a power-law relationship.</span></span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a><span class="co"># These parameters describe the scaling of predation with body size.</span></span>
+<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">$</span>pred_kernel_type <span class="ot">&lt;-</span> <span class="st">"power_law"</span></span>
+<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a>lambda <span class="ot">&lt;-</span> <span class="dv">2</span>  <span class="co"># Scaling exponent for predator-prey size relationship</span></span>
+<span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">$</span>kernel_exp <span class="ot">&lt;-</span> fits<span class="sc">$</span>alpha <span class="sc">+</span> <span class="dv">4</span><span class="sc">/</span><span class="dv">3</span> <span class="sc">-</span> lambda  <span class="co"># Adjust predation exponent </span></span>
+<span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a><span class="co"># based on stomach contents data</span></span>
+<span id="cb47-16"><a href="#cb47-16" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">$</span>kernel_l_l <span class="ot">&lt;-</span> fits<span class="sc">$</span>ll  <span class="co"># Lower limit for predator-prey size ratio</span></span>
+<span id="cb47-17"><a href="#cb47-17" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">$</span>kernel_u_l <span class="ot">&lt;-</span> fits<span class="sc">$</span>ul  <span class="co"># Upper limit for predator-prey size ratio</span></span>
+<span id="cb47-18"><a href="#cb47-18" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">$</span>kernel_l_r <span class="ot">&lt;-</span> fits<span class="sc">$</span>lr  <span class="co"># Lower limit for prey-size refuge</span></span>
+<span id="cb47-19"><a href="#cb47-19" aria-hidden="true" tabindex="-1"></a>sp<span class="sc">$</span>kernel_u_r <span class="ot">&lt;-</span> fits<span class="sc">$</span>ur  <span class="co"># Upper limit for prey-size refuge</span></span>
+<span id="cb47-20"><a href="#cb47-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-21"><a href="#cb47-21" aria-hidden="true" tabindex="-1"></a><span class="fu">species_params</span>(p)<span class="ot">&lt;-</span>sp <span class="co">#added this code otherwise the kernels were not being inputted into the species parameters?</span></span>
+<span id="cb47-22"><a href="#cb47-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-23"><a href="#cb47-23" aria-hidden="true" tabindex="-1"></a>gp <span class="ot">&lt;-</span> <span class="fu">gear_params</span>(p)</span>
+<span id="cb47-24"><a href="#cb47-24" aria-hidden="true" tabindex="-1"></a>p_backup1<span class="ot">&lt;-</span>p</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="tuning-the-model" class="level1">
+<h1>5) Tuning the Model</h1>
+<p>Now introducing tuneEcopath a shiny gadget which allows the tuning of the model. The parameters we will be focusing on tuning are the allometric exponents, alpha, and gear selectivity (L50, L25/L50). In hopes of matching the death rates tab to a allometric fit and ensuring the catch curves fit as nicely as possibly. Between each step press match. You will likely be toggling between the catch and death tabs often to see that a well matched curve does not case deviations too strongly from the mortality. We are trying to ensure that the mortality is for all intents and purposes fits this allometric curve if you see the warning : Warning: Implied negative external encounter rate for Hake. Setting it to zero. This may alter the steady state. This simply means that the current mortality curve deviates too strongly from the expected allometric relationship. This can be fixed by adjusting the parameters above.</p>
+<section id="tune-in-tuneecopath" class="level2">
+<h2 class="anchored" data-anchor-id="tune-in-tuneecopath">5.1 Tune in tuneEcopath()</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="co"># For the moment simply press return</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>p_unchanged_with_winf_t0 <span class="ot">&lt;-</span> <span class="fu">tuneEcopath</span>(</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>    p,</span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">catch =</span> catch, </span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">diet =</span> dm,</span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">preserve =</span> <span class="st">"reproduction_level"</span></span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: shiny</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: package 'shiny' was built under R version 4.4.1</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Listening on http://127.0.0.1:4624</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(p, erepro = p@species_params$tuneParams_old_erepro): For the following species `erepro` has been increased to the smallest possible value: erepro[Blue whiting] = 0.235; erepro[Cod] = 0.00135; erepro[Haddock] = 9.39e-05; erepro[Horse mackerel] = 0.0051; erepro[Mackerel] = 0.000599; erepro[Megrim] = 0.000121; erepro[Sole] = 0.00644</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="co">#saveRDS(p_unchanged_with_winf_t0, file = "/Users/jessicawestworth/Desktop/Mizer Work/Projects/mizerEcopathedits/data/unchanged_with_winf_t0.rds")</span></span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a>p_unchanged_with_winf_t0<span class="ot">&lt;-</span><span class="fu">readRDS</span>(<span class="st">"/Users/jessicawestworth/Desktop/Mizer Work/Projects/mizerEcopathedits/data/unchanged_with_winf_t0.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="set-feeding-level" class="level2">
+<h2 class="anchored" data-anchor-id="set-feeding-level">5.2 Set Feeding Level</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set a baseline feeding level for species in the model.</span></span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>p_unchanged_with_winf_t0 <span class="ot">&lt;-</span> <span class="fu">setFeedingLevel</span>(p_unchanged_with_winf_t0, <span class="fl">0.6</span>) <span class="co"># Ken sets to 0.6, no obvious explanation</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="turn-on-interactions" class="level1">
+<h1>6) Turn on Interactions</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Match the diet matrix with the Mizer model to enable predator-prey interactions.</span></span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>p_unchanged_with_winf_t0 <span class="ot">&lt;-</span> <span class="fu">matchDiet</span>(p_unchanged_with_winf_t0, dm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in makeInteracting(params, theta): Implied negative external encounter
+rate for Hake. Setting it to zero. This may alter the steady state.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in makeInteracting(params, theta): Implied negative external mortality
+rate for Haddock. Setting it to zero. This may alter the steady state.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in makeInteracting(params, theta): Implied negative external mortality
+rate for Hake. Setting it to zero. This may alter the steady state.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in makeInteracting(params, theta): Implied negative external mortality
+rate for Horse mackerel. Setting it to zero. This may alter the steady state.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in makeInteracting(params, theta): Implied negative external mortality
+rate for Megrim. Setting it to zero. This may alter the steady state.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in makeInteracting(params, theta): Implied negative external mortality
+rate for Plaice. Setting it to zero. This may alter the steady state.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">#Warning: Implied negative external encounter rate for Hake.</span></span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>        <span class="co">#Setting it to zero. This may alter the steady state.</span></span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">#Warning: Implied negative external encounter rate for Whiting.</span></span>
+<span id="cb62-4"><a href="#cb62-4" aria-hidden="true" tabindex="-1"></a>        <span class="co">#Setting it to zero. This may alter the steady state.</span></span>
+<span id="cb62-5"><a href="#cb62-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">#Warning: Implied negative external mortality rate for Haddock.</span></span>
+<span id="cb62-6"><a href="#cb62-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">#Setting it to zero. This may alter the steady state.</span></span>
+<span id="cb62-7"><a href="#cb62-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">#Warning: Implied negative external mortality rate for Hake. </span></span>
+<span id="cb62-8"><a href="#cb62-8" aria-hidden="true" tabindex="-1"></a>        <span class="co">#Setting it to zero. This may alter the steady state.</span></span>
+<span id="cb62-9"><a href="#cb62-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">#Warning: Implied negative external mortality rate for Horse mackerel.</span></span>
+<span id="cb62-10"><a href="#cb62-10" aria-hidden="true" tabindex="-1"></a>        <span class="co">#Setting it to zero. This may alter the steady state.</span></span>
+<span id="cb62-11"><a href="#cb62-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">#Warning: Implied negative external mortality rate for Megrim. </span></span>
+<span id="cb62-12"><a href="#cb62-12" aria-hidden="true" tabindex="-1"></a>        <span class="co">#Setting it to zero. This may alter the steady state.</span></span>
+<span id="cb62-13"><a href="#cb62-13" aria-hidden="true" tabindex="-1"></a><span class="co">#Issues that need to be fixed for species include Hake, Whiting, Haddock, Horse mackerel and Megrim.</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="trials" class="level1">
+<h1>Trials</h1>
+<section id="trial-1" class="level2">
+<h2 class="anchored" data-anchor-id="trial-1">Trial 1</h2>
+<p>Tackling negative external mortality in hake and</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb63"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Change parameter m, match production, and match yield to reduce the external mortality.</span></span>
+<span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a>p_trial1 <span class="ot">&lt;-</span> <span class="fu">tuneEcopath</span>(</span>
+<span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a>    p,</span>
+<span id="cb63-4"><a href="#cb63-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">catch =</span> catch, </span>
+<span id="cb63-5"><a href="#cb63-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">diet =</span> dm,</span>
+<span id="cb63-6"><a href="#cb63-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">preserve =</span> <span class="st">"reproduction_level"</span></span>
+<span id="cb63-7"><a href="#cb63-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Listening on http://127.0.0.1:4624</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in setBevertonHolt(p, erepro = p@species_params$tuneParams_old_erepro): For the following species `erepro` has been increased to the smallest possible value: erepro[Blue whiting] = 0.235; erepro[Cod] = 0.00135; erepro[Haddock] = 9.39e-05; erepro[Horse mackerel] = 0.0051; erepro[Mackerel] = 0.000599; erepro[Megrim] = 0.000121; erepro[Sole] = 0.00644</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a><span class="co">#saveRDS(p_trial1, file = "/Users/jessicawestworth/Desktop/Mizer Work/Projects/mizerEcopathedits/data/trial1.rds")</span></span>
+<span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a>p_trial1<span class="ot">&lt;-</span><span class="fu">readRDS</span>(<span class="st">"/Users/jessicawestworth/Desktop/Mizer Work/Projects/mizerEcopathedits/data/trial1.rds"</span>)</span>
+<span id="cb66-3"><a href="#cb66-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-4"><a href="#cb66-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Set a baseline feeding level for species in the model.</span></span>
+<span id="cb66-5"><a href="#cb66-5" aria-hidden="true" tabindex="-1"></a>p_trial1 <span class="ot">&lt;-</span> <span class="fu">setFeedingLevel</span>(p_trial1, <span class="fl">0.6</span>) <span class="co"># Ken sets to 0.6, no obvious explanation</span></span>
+<span id="cb66-6"><a href="#cb66-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-7"><a href="#cb66-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Match the diet matrix with the Mizer model to enable predator-prey interactions.</span></span>
+<span id="cb66-8"><a href="#cb66-8" aria-hidden="true" tabindex="-1"></a>p_trial1 <span class="ot">&lt;-</span> <span class="fu">matchDiet</span>(p_trial1, dm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in makeInteracting(params, theta): Implied negative external encounter
+rate for Hake. Setting it to zero. This may alter the steady state.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in makeInteracting(params, theta): Implied negative external encounter
+rate for Megrim. Setting it to zero. This may alter the steady state.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">#Warning: Implied negative external encounter rate for Hake.</span></span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>        <span class="co">#Setting it to zero. This may alter the steady state.</span></span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">#Warning: Implied negative external encounter rate for Megrim.</span></span>
+<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a>        <span class="co">#Setting it to zero. This may alter the steady state.</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="trial-2" class="level2">
+<h2 class="anchored" data-anchor-id="trial-2">Trial 2</h2>
+<p>Next Step: Tackling negative external encounter rate (perhaps through amending growth curves.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
