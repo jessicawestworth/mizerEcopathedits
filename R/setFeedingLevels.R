@@ -2,10 +2,11 @@
 #'
 #' @description
 #' This function takes a tuned, non-interacting allometric model (where initially
-#' \eqn{h = \infty} and \eqn{k_s = 0}) and determines the new maximum intake rate (\eqn{h})
-#' and metabolic loss (\eqn{k_s}) parameters. It does this by adjusting metabolic
-#' loss, encounter rate, and maximum intake rate so that the energy available for
-#' reproduction and growth remains constant, despite changes in the feeding level.
+#' \eqn{h = \infty} and \eqn{k_s = 0}) and determines the new maximum intake rate
+#' (\eqn{h}) and metabolic loss (\eqn{k_s}) parameters. It does this by adjusting
+#' metabolic loss, encounter rate, and maximum intake rate so that the energy
+#' available for reproduction and growth remains constant, despite changes in
+#' the feeding level.
 #'
 #' @details
 #' The function follows a three-step methodology to ensure that the consumption
@@ -52,7 +53,7 @@
 #' @return A \linkS4class{MizerParams} object with updated $h$, $k_s$,
 #'   and \code{ext_encounter} rates.
 #' @export
-setEnergeticComponents <- function(params, feeding_level, critical_feeding_level) {
+setFeedingLevels <- function(params, feeding_level, critical_feeding_level) {
     sp <- params@species_params
 
     # Check that params describes a non-interacting model
@@ -85,8 +86,15 @@ setEnergeticComponents <- function(params, feeding_level, critical_feeding_level
     }
 
     if (missing(critical_feeding_level)) {
-        critical_feeding_level<-0.2
-        critical_feeding_level <- rep(critical_feeding_level, nrow(sp))
+        #if critical_feeding_level is not in the species params set to 0.2 for
+        #all species
+        if(is.null(sp$fc)){
+            critical_feeding_level <- rep(0.2, nrow(sp))
+        }
+        #if critical_feeding_level is in the species params, keep these values.
+        else {
+            critical_feeding_level<-sp$fc
+        }
     }
 
     assert_that(is.numeric(feeding_level))

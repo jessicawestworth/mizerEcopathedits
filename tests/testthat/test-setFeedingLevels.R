@@ -1,4 +1,4 @@
-test_that("setEnergeticComponents works", {
+test_that("setFeedingLevels works", {
     # Setup: Create a base model that does not meet the requirements
     sp_params<-species_params(NS_params)
     sp_params$n<-0.6
@@ -9,45 +9,45 @@ test_that("setEnergeticComponents works", {
 
     ### Test Prerequisites / Errors ------------------------------------------
     #Check with interacting model NS
-    expect_error(setEnergeticComponents(NS_params, feeding_level = 0.6, critical_feeding_level = 0.2),
+    expect_error(setFeedingLevels(NS_params, feeding_level = 0.6, critical_feeding_level = 0.2),
                 regexp = "This function only works for models where all encounter is external encounter")
 
     #Check exponents n and p values are the same
-    expect_error(setEnergeticComponents(params, feeding_level = 0.6, critical_feeding_level = 0.2),
+    expect_error(setFeedingLevels(params, feeding_level = 0.6, critical_feeding_level = 0.2),
         regexp = "Exponents n and p must be equal")
 
     params@species_params$n<-0.7
 
     #Check that h is Inf
-    expect_error(setEnergeticComponents(params, feeding_level = 0.6, critical_feeding_level = 0.2),
+    expect_error(setFeedingLevels(params, feeding_level = 0.6, critical_feeding_level = 0.2),
                  regexp = "h must be Inf before calling this function")
 
     params@species_params$h<-Inf
 
     #Check that ks is 0
-    expect_error(setEnergeticComponents(params, feeding_level = 0.6, critical_feeding_level = 0.2),
+    expect_error(setFeedingLevels(params, feeding_level = 0.6, critical_feeding_level = 0.2),
                  regexp = "ks must be 0 before calling this function")
 
     params@species_params$ks<-0
 
     #Check if feeding level is not supplied
-    expect_error(setEnergeticComponents(params),
+    expect_error(setFeedingLevels(params),
                  regexp = "You need to supply the desired feeding_level.")
 
     #Check feeding level is between 0 and 1
-    expect_error(setEnergeticComponents(params, feeding_level = 1.1),
+    expect_error(setFeedingLevels(params, feeding_level = 1.1),
                  "Feeding level must be positive and strictly less than 1.")
 
     #Check feeding level is between 0 and 1
-    expect_error(setEnergeticComponents(params, feeding_level = 0.6, critical_feeding_level = -1),
+    expect_error(setFeedingLevels(params, feeding_level = 0.6, critical_feeding_level = -1),
                  "Critical feeding level must be positive and strictly less than 1.")
 
     #Check feeding level is more than critical feeding level
-    expect_error(setEnergeticComponents(params, feeding_level = 0.4, critical_feeding_level = 0.6),
+    expect_error(setFeedingLevels(params, feeding_level = 0.4, critical_feeding_level = 0.6),
                  regexp ="Critical feeding level must be less than the feeding level ")
 
     #Check for Allometric rates error (should trigger because n value has beeen changed above)
-    expect_error(setEnergeticComponents(params, feeding_level = 0.6, critical_feeding_level = 0.2),
+    expect_error(setFeedingLevels(params, feeding_level = 0.6, critical_feeding_level = 0.2),
                  regexp ="This function only works for models made up of allometric rates.")
 
     #Make functioning proper model
@@ -57,7 +57,7 @@ test_that("setEnergeticComponents works", {
     params<-newAllometricParams(sp_params, no_w = 200)
 
     ### Test Outputs ------------------------------------------
-    params_changed<-setEnergeticComponents(params, feeding_level = 0.6, critical_feeding_level = 0.2)
+    params_changed<-setFeedingLevels(params, feeding_level = 0.6, critical_feeding_level = 0.2)
 
     ## Check that Eriw remains the same
     Eriw_params<-getEReproAndGrowth(params)
