@@ -49,12 +49,12 @@
 #' sim <- project(params, t_max = 20, effort = 1)
 make_blended_ssBH_FMort <- function(t_max_blend, target_c, alpha_max, t_steady){
     function(params, n, n_pp, n_other, t, effort, ...) {
-        # Calculate the 'Standard' Mizer Mortality (Gear-based)
+        #calculate the 'Standard' Mizer Mortality (Gear-based)
         # We assume a base effort of 1 for the underlying gears for this calculation
         f_standard <- mizerFMort(params, n = n, n_pp = n_pp, n_other = n_other,
                                  t = t, effort = 1, ...)
 
-        # Calculate the 'ssBH' Mortality
+        #calculate the 'ssBH' mortality
         # We use a fixed c_value (e.g., 0.2) for the target BH intensity
         flux_results <- compute_flux(params,
                                      c_value = target_c,
@@ -74,10 +74,15 @@ make_blended_ssBH_FMort <- function(t_max_blend, target_c, alpha_max, t_steady){
         if(t_max_blend <= t_steady) stop("t_max_blend must be greater
                                          than t_steady")
 
-        # 3. Blend them based on the 'effort' parameter passed to project()
+        #blend them based on the 'effort' parameter passed to project()
         # 'effort' here acts as our transition alpha (0 to 1)
+        if(t<t_max_blend){
         alpha <- alpha_max*((t-t_steady)/(t_max_blend-t_steady))
-        alpha <- max(0, min(1, alpha)) #safety clamp
+        }
+
+        if(t>=t_max_blend){
+            alpha<-alpha_max
+        }
 
         if(t>t_steady){
             f_combined <- (1-alpha) * f_standard + (alpha) * f_ssBH
