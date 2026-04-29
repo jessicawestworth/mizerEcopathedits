@@ -551,6 +551,18 @@ cs_landings_w_discards<-cs_landings_normalised%>%
 Load in FDI landings data per species and gear and use to get proportion of total landings then multiply by total landings from ICES of the total landed multiply and add the percentage of weight surviving and the percentage survival
 
 ```{r}
+subset_species <- function(data, species_list, match_by = "species") {
+  # Validate match_by parameter
+  if (!match_by %in% c("species", "Scientific_name", "English_name")) {
+    stop("match_by must be one of 'species', 'Scientific_name', or 'English_name'")
+  }
+  
+  # Filter the data to include only the specified species
+  subset_data <- data %>% filter(!!sym(match_by) %in% species_list)
+  
+  return(subset_data)
+}
+
 FDI_EU_2013<-read.csv("/Users/jessicawestworth/Desktop/Data we might want/Landings/FDI Landings EU 2013.csv")
 FDI_EU_2014<-read.csv("/Users/jessicawestworth/Desktop/Data we might want/Landings/FDI Landings EU 2014.csv")
 FDI_EU_2015<-read.csv("/Users/jessicawestworth/Desktop/Data we might want/Landings/FDI Landings EU 2015.csv")
@@ -565,7 +577,7 @@ FDI_EU_2023<-read.csv("/Users/jessicawestworth/Desktop/Data we might want/Landin
 
 FDI_EU<-rbind(FDI_EU_2013,FDI_EU_2014,FDI_EU_2015,FDI_EU_2016,FDI_EU_2017,FDI_EU_2018,FDI_EU_2019,FDI_EU_2020,FDI_EU_2021,FDI_EU_2022,FDI_EU_2023)
 
-unique(FDI_EU$sub_region)
+unique(FDI_EU$Sub.region)
 
 FDI_EU <- FDI_EU %>%
   mutate(
