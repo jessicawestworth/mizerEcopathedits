@@ -4,7 +4,6 @@
 .Ruserdata
 inst/doc
 *_files
-*.rds
 *.so
 *.o
 

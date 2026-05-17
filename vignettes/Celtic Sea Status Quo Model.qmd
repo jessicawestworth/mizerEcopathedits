@@ -86,8 +86,12 @@ catch_distribution<-catch_distribution%>%filter(!species=="Dragonet")
 
 #DATRAS size distribution
 data(survey_length_distribution)
+
 survey_length_distribution<-survey_length_distribution%>%
-    filter(!species=="Dragonet")
+    filter(!species=="Dragonet")%>%
+    group_by(species, gear) %>%
+    mutate(catch = catch / sum(catch, na.rm = TRUE)) %>%
+    ungroup()
 
 #DATRAS age at length distribution
 data(cs_age_size)
@@ -220,7 +224,7 @@ species_params(model_non_int)<-sps
 #| eval: false
 #Adjust diet matrix for integration into model using reduceEcopathDiet
 dm<-reduceEcopathDiet(
-    species_params = species_params(final),
+    species_params = species_params(final7),
     ecopath_diet   = diet,
     ecopath_params = ecopath_params
 )
@@ -249,25 +253,26 @@ species_params(model_non_int) <- sp
 initial<-readRDS("/Users/jessicawestworth/Desktop/initial.rds")
 initial<-validParams(initial)
 
-final1<-readRDS("/Users/jessicawestworth/Desktop/Status Quo Starting Models/final1.rds")
-
-
-blue_whiting<-tuneEcopath(
-    s, 
+final7<-readRDS("/Users/jessicawestworth/Desktop/Status Quo Starting Models/final7.rds")
+p<-setDiffusion(final7)
+#p<-setFeedingLevels(p, f=0.6,f_c=0.2)
+#p<-matchDiet(p, diet_matrix=dm)
+blue<-tuneEcopath(
+    p, 
     catch = all_fishing,
     age_at_length = cs_age_size,
     diet = dm)
 
 #steadySingleSpecies(blue_whiting)
-#saveRDS(final,"/Users/jessicawestworth/Desktop/Status Quo Starting Models/final1.rds")
+#saveRDS(blue,"/Users/jessicawestworth/Desktop/Status Quo Starting Models/final5.rds")
 ```
 
 # Prepare Model for Projection
 
 ```{r}
 #| eval: false
-s<-mizer::steadySingleSpecies(blue_whiting)
-g<-setFeedingLevels(params=s, feeding_level=0.6, critical_feeding_level=0.2)
+s<-mizer::steadySingleSpecies(final7)
+g<-setFeedingLevels(params=s, f=0.6, f_c=0.2)
 p<-mizer::steadySingleSpecies(g)
 plotSpectra2(p,s)
 
@@ -293,13 +298,13 @@ ps <- params |>
     mizer::steadySingleSpecies() |>
     alignResource() |>
     setResourceInteraction(resource_dynamics = "resource_semichemostat") |>
-    matchDiet(dm) |> 
+    matchDiet(dm) |>
     setBevertonHolt(reproduction_level = 0.8)
 
 ps_non<-unserialize(serialize(ps, NULL))
 
 #Project
-sim1 <- project(ps, t_max = 100)
+sim1 <- project(ps, t_max = 300,effort=1)
 
 #Compare the status quo projection to status quo initial params object
 plotBiomass(sim1)
@@ -318,7 +323,7 @@ plotBiomass(sim1)
 #| eval: false
 # Initialize the blender
 # Let's say we want to transition over 20 years with a harvest intensity of 0.15, but then we want to keep fishing at BH till true steady state is reached.
-t_duration <-300
+t_duration <-350
 og_sim_steady_in<-100
 t_blend <- 200
 c_intensity <- 0
@@ -326,16 +331,16 @@ c_intensity <- 0
 my_blender <- make_blended_ssBH_FMort(t_max_blend = t_blend, 
                                       target_c = c_intensity,
                                       t_steady = og_sim_steady_in,
-                                      alpha_max = 1)
+                                      alpha_max = 0.2)
 
 # Inject function into params
-#sim_BH_start<- setRateFunction(ps, "FMort", "my_blender")
+sim_BH_start<- setRateFunction(ps, "FMort", "my_blender")
 
 # Run the simulation
 # Use effort = 1; the blender handles the internal weights
-#sim_BH_4 <- project(sim_BH_start, t_max = t_duration, effort = 1)
+sim_BH_4 <- project(sim_BH_start, t_max = t_duration, effort = 1)
 
-#plotlyBiomass(sim_BH_4)
+plotlyBiomass(sim_BH_4)
 ```
 
 # Compare the Status Quo Sim to the Balanced Harvest Sim
@@ -343,7 +348,9 @@ my_blender <- make_blended_ssBH_FMort(t_max_blend = t_blend,
 ```{r}
 #| eval: false
 #Compare
-plotSpectra2(sim,sim_BH)
+sim_list<-readRDS("/Users/jessicawestworth/Desktop/BH simulations/sim_list_extended/sim_list.rds")
+
+p<-readRDS("/Users/jessicawestworth/Desktop/BH simulations/p_extended_time/p_extended_time.rds")
 ```
 
 Comparing
@@ -351,41 +358,5 @@ Comparing
 ```{r}
 #| eval: false
 #Fishing Mort
-f_mort<-getFMort(sim_BH)
-fmort100<-as.numeric(f_mort[100,5,])
-fmort500<-as.numeric(f_mort[500,5,])
 
-plot(fmort100~log(w), type="l")
-points(fmort500~log(w), type="l",col="blue")
-legend("topright", fill=c("black","blue"), legend=c("Status","BH"))
-
-#Pred Mort
-p_mort<-getPredMort(sim_BH)
-pmort100<-as.numeric(p_mort[100,5,])
-pmort500<-as.numeric(p_mort[500,5,])
-
-plot(pmort100~log(w), type="l",col="black")
-points(pmort500~log(w), type="l", col="blue")
-legend("topright", fill=c("black","blue"), legend=c("Status","BH"))
-```
-
-```{r}
-#| eval: false
-Biomass<-getBiomass(sim_BH)
-sum(Biomass[99,])
-sum(Biomass[999,])
-N<-getN(sim_BH)
-sum(N[99,])
-sum(N[999,])
-SSB<-getSSB(sim_BH)
-sum(SSB[99,])
-sum(SSB[999,])
-Yield<-getYield(sim_BH)
-sum(Yield[99,])
-sum(Yield[999,])
-
-
-Yi<-getYield(sim_BH_easy)
-sum(Yi[99,])
-sum(Yi[299,])
 ```
