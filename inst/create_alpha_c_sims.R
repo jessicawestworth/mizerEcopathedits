@@ -1,3 +1,5 @@
+library(cowplot)
+
 t_duration <- 700
 t_steadied <- 100
 t_blended <- 200
@@ -69,13 +71,13 @@ for(c_val in unique(p$c)){
 #save Yield
 ##saveRDS(Yield_list, "/Users/jessicawestworth/Desktop/BH simulations/yield_extended/Yield_extended_time.rds")
 
-
+sim_list<-readRDS("/Users/jessicawestworth/Desktop/BH simulations/sim_list_extended/sim_list.rds")
 p<-readRDS("/Users/jessicawestworth/Desktop/BH simulations/p_extended_time/p_extended_time.rds")
 #Full BH plots (where: alpha=1)
 p_full<-p%>%
-    filter(alpha==1)
+    filter(c>0,alpha==1)
 
-ggplot(p_full, aes(x=c,y=log(BH_Y), group=species))+
+g1<-ggplot(p_full, aes(x=c,y=log(BH_Y), group=species))+
     geom_line(aes(color=species))+
     scale_colour_manual(values = params@linecolour)+
     theme_cowplot(12)+
@@ -83,7 +85,7 @@ ggplot(p_full, aes(x=c,y=log(BH_Y), group=species))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     labs(y= "Log Yield (g/year/m^2)", x= "c", color="Species")
 
-ggplot(p_full, aes(x=c,y=log(BH_B), group=species))+
+g2<-ggplot(p_full, aes(x=c,y=log(BH_B), group=species))+
     geom_line(aes(color=species))+
     scale_colour_manual(values = params@linecolour)+
     theme_cowplot(12)+
@@ -91,7 +93,7 @@ ggplot(p_full, aes(x=c,y=log(BH_B), group=species))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     labs(y= "Log Biomass (g/m^2)", x= "c", color="Species")
 
-ggplot(p_full, aes(x=c,y=log(BH_SSB), group=species))+
+g3<-ggplot(p_full, aes(x=c,y=log(BH_SSB), group=species))+
     geom_line(aes(color=species))+
     scale_colour_manual(values = params@linecolour)+
     theme_cowplot(12)+
@@ -99,13 +101,31 @@ ggplot(p_full, aes(x=c,y=log(BH_SSB), group=species))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     labs(y= "Log Spawning Stock Biomass (g/m^2)", x= "c", color="Species")
 
-ggplot(p_full, aes(x=c,y=log(BH_N), group=species))+
+g4<-ggplot(p_full, aes(x=c,y=log(BH_N), group=species))+
     geom_line(aes(color=species))+
     scale_colour_manual(values = params@linecolour)+
     theme_cowplot(12)+
     scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     labs(y= "Log Number of Individuals (per m^2)", x= "c", color="Species")
+
+legend <- get_legend(
+    g1 +
+        theme(legend.position = "right") +
+        guides(color = guide_legend(ncol = 1))  # force vertical
+)
+
+g1 <- g1 + theme(legend.position = "none")
+g2 <- g2 + theme(legend.position = "none")
+g3 <- g3 + theme(legend.position = "none")
+g4 <- g4 + theme(legend.position = "none")
+
+plot_grid(
+    plot_grid(g1, g2, g3, g4, ncol = 2),
+    legend,
+    ncol = 2,
+    rel_widths = c(1, 0.25)
+)
 
 p_grouped<-p%>%
     group_by(c,alpha)%>%
@@ -211,7 +231,7 @@ for(c_val in unique(p_grouped$c)){
 
     #large fish proportion in yield
     p_grouped$status_LFY_t[rows]<-status_LFY_t
-    p_grouped$status_LFY_t[rows]<-BH_LFY_t
+    p_grouped$BH_LFY_t[rows]<-BH_LFY_t
     p_grouped$status_LFY[rows]<-status_LFY
     p_grouped$BH_LFY[rows]<-BH_LFY
 
@@ -227,32 +247,81 @@ for(c_val in unique(p_grouped$c)){
 p_grouped<-readRDS("/Users/jessicawestworth/Desktop/BH simulations/p_grouped.rds")
 #to extract specific simulations: sim <- sim_list[["c_0.5_a_0.3"]]
 #example extract c=0.5 and alpha=0.3
+p_grouped<-p_grouped%>%filter(c>0)
 
-plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_Y, type= "heatmap")
-plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_B, type= "heatmap")
-plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_SSB, type= "heatmap")
-plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_N, type= "heatmap")
-plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_LFY_t, type= "heatmap")
-plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_LFB_t, type= "heatmap")
-plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_LFY, type= "heatmap")
-plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_LFB, type= "heatmap")
+plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_Y, type= "heatmap", colorbar = list(title = "Y"))%>%
+    layout(yaxis = list(title = ' '), xaxis = list(title = ' '))
+plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_B, type= "heatmap", colorbar = list(title = "B"))%>%
+    layout(yaxis = list(title = ' '), xaxis = list(title = ' '))
+plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_SSB, type= "heatmap", colorbar = list(title = "SSB"))%>%
+    layout(yaxis = list(title = ' '), xaxis = list(title = ' '))
+plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_N, type= "heatmap", colorbar = list(title = "N"))%>%
+    layout(yaxis = list(title = ' '), xaxis = list(title = ' '))
+plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_LFY_t, type= "heatmap", colorbar = list(title = "BLFY"))%>%
+    layout(yaxis = list(title = ' '), xaxis = list(title = ' '))
+plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_LFB_t, type= "heatmap", colorbar = list(title = "BLFS"))%>%
+    layout(yaxis = list(title = ' '), xaxis = list(title = ' '))
+plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_LFY, type= "heatmap", colorbar = list(title = "PBLFY"))%>%
+    layout(yaxis = list(title = ' '), xaxis = list(title = ' '))
+plot_ly(data=p_grouped, x= ~c,y= ~alpha,z= ~BH_LFB, type= "heatmap", colorbar = list(title = "PBLFS"))%>%
+    layout(yaxis = list(title = ' '), xaxis = list(title = ' '))
+
+whole_BH<-p_grouped%>%filter(c>0, alpha==1)
+
+g1<-ggplot(whole_BH, aes(x=c,y=BH_Y))+
+    geom_line()+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(y= "Y", x= "c")
+g2<-ggplot(whole_BH, aes(x=c,y=BH_B))+
+    geom_line()+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(y= "B", x= "c")
+g3<-ggplot(whole_BH, aes(x=c,y=BH_SSB))+
+    geom_line()+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(y= "SSB", x= "c")
+g4<-ggplot(whole_BH, aes(x=c,y=BH_N))+
+    geom_line()+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(y= "N", x= "c")
+g5<-ggplot(whole_BH, aes(x=c,y=BH_LFB))+
+    geom_line()+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(y= "PBLFS", x= "c")
+g6<-ggplot(whole_BH, aes(x=c,y=BH_LFB_t))+
+    geom_line()+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(y= "BLFS", x= "c")
+g7<-ggplot(whole_BH, aes(x=c,y=BH_LFY))+
+    geom_line()+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(y= "PBLFY", x= "c")
+g8<-ggplot(whole_BH, aes(x=c,y=BH_LFY_t))+
+    geom_line()+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(y= "BLFY", x= "c")
 
 
+plot<-plot_grid(g1,g2, g3, g4,g5,g6,g7,g8, ncol = 2, label_y = 1.1, labels = letters[1:8], rel_heights = c(1, 1.1))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ggdraw() +
+    draw_plot(plot, y = 0, height = 0.95)
 
 #Increasing and decreasing effort for current fishing
 t_duration <- 700
@@ -495,42 +564,323 @@ plot_ly(data=current_fish_grouped, x= ~alpha,y= ~proj_LFB, mode='lines')%>%
 #Boarfish goes extinct effort = 7
 #Monkfish begins to go extinct effort = 10
 
-#determine important full BH states
+#determine important whole BH states
 pg<-p_grouped%>%filter(alpha==1)
-colSums(pg)
-pg$Total_BH_Y<-249.094755
-pg$Total_BH_B<-352.493550
-pg$Total_BH_SSB<-153.522653
-pg$Total_BH_N<-920.604007
-pg$Total_BH_LFB<-4.122696
+pg[1,13]<-0
+pg$Y<-(pg$BH_Y-min(pg$BH_Y))/(max(pg$BH_Y)-min(pg$BH_Y))
+pg$N<-(pg$BH_N-min(pg$BH_N))/(max(pg$BH_N)-min(pg$BH_N))
+pg$B<-(pg$BH_B-min(pg$BH_B))/(max(pg$BH_B)-min(pg$BH_B))
+pg$SSB<-(pg$BH_SSB-min(pg$BH_SSB))/(max(pg$BH_SSB)-min(pg$BH_SSB))
+pg$LFB<-(pg$BH_LFB-min(pg$BH_LFB))/(max(pg$BH_LFB)-min(pg$BH_LFB))
+pg$LFB_t<-(pg$BH_LFB_t-min(pg$BH_LFB_t))/(max(pg$BH_LFB_t)-min(pg$BH_LFB_t))
+pg$LFY<-(pg$BH_LFY-min(pg$BH_LFY))/(max(pg$BH_LFY)-min(pg$BH_LFY))
+pg$LFY_t<-(pg$BH_LFY_t-min(pg$BH_LFY_t))/(max(pg$BH_LFY_t)-min(pg$BH_LFY_t))
 
-pb<-na.omit(pg)
-colSums(pb)
+pg$conservation<-(pg$N+pg$B+pg$SSB+pg$LFB_t+pg$LFB)/5
+pg$economic<-(pg$Y+pg$LFY+pg$LFY_t)/3
 
-pg$Total_BH_LFY<-0.7527794
+pg$points<-pg$conservation+pg$economic
 
-pg$Y<-pg$BH_Y/pg$Total_BH_Y
-pg$N<-pg$BH_N/pg$Total_BH_N
-pg$B<-pg$BH_B/pg$Total_BH_B
-pg$SSB<-pg$BH_SSB/pg$Total_BH_SSB
-pg$LFB<-pg$BH_LFB/pg$Total_BH_LFB
-pg$LFY<-pg$BH_LFY/pg$Total_BH_LFY
-
-pg[1,26]<-NA
-colSums(pg)
-
-plot(pg$c, pg$N, type="l",col="red", ylim=c(0,0.15))
-points(pg$c, pg$B, type="l", col="orange")
-points(pg$c, pg$Y, type="l", col="yellow3")
-points(pg$c, pg$SSB, type="l", col="green3")
-points(pg$c, pg$LFY, type="l", col="blue")
-points(pg$c, pg$LFB, type="l", col="lightblue")
-
-pg[1,29]<-0
-
-pg$points<-pg$N+pg$B+pg$SSB+pg$LFY+pg$LFB
 max(pg$points)
 
+#determine best state
+pg<-p_grouped
+pg[11,13]<-0
+pg$Y<-(pg$BH_Y-min(pg$BH_Y))/(max(pg$BH_Y)-min(pg$BH_Y))
+pg$N<-(pg$BH_N-min(pg$BH_N))/(max(pg$BH_N)-min(pg$BH_N))
+pg$B<-(pg$BH_B-min(pg$BH_B))/(max(pg$BH_B)-min(pg$BH_B))
+pg$SSB<-(pg$BH_SSB-min(pg$BH_SSB))/(max(pg$BH_SSB)-min(pg$BH_SSB))
+pg$LFB<-(pg$BH_LFB-min(pg$BH_LFB))/(max(pg$BH_LFB)-min(pg$BH_LFB))
+pg$LFB_t<-(pg$BH_LFB_t-min(pg$BH_LFB_t))/(max(pg$BH_LFB_t)-min(pg$BH_LFB_t))
+pg$LFY<-(pg$BH_LFY-min(pg$BH_LFY))/(max(pg$BH_LFY)-min(pg$BH_LFY))
+pg$LFY_t<-(pg$BH_LFY_t-min(pg$BH_LFY_t))/(max(pg$BH_LFY_t)-min(pg$BH_LFY_t))
+
+pg$conservation<-(pg$N+pg$B+pg$SSB+pg$LFB_t+pg$LFB)/5
+pg$economic<-(pg$Y+pg$LFY+pg$LFY_t)/3
+
+pg$points<-pg$conservation+pg$economic
+
+max(pg$points)
+
+pg<-pg%>%filter(c>0)
+plot_ly(data=pg, x= ~c,y= ~alpha,z= ~points, type= "heatmap", colorbar = list(title = "MCCS"))%>%
+    layout(yaxis = list(title = 'A (weighting)'), xaxis = list(title = 'c (fishing intensity)'))
 
 
 
+#plot the Yields
+my_blender <- make_blended_ssBH_FMort(
+    t_max_blend = t_blended,
+    target_c = 0.4,
+    t_steady = t_steadied,
+    alpha_max = 1
+)
+
+sim_BH_start <- setRateFunction(ps, "FMort", "my_blender")
+
+#f_whole<-getFMort(sim_list[["c_0.4_a_1"]], drop = FALSE)
+
+my_blender <- make_blended_ssBH_FMort(
+    t_max_blend = t_blended,
+    target_c = 0.4,
+    t_steady = t_steadied,
+    alpha_max = 0.5
+)
+
+sim_BH_start <- setRateFunction(ps, "FMort", "my_blender")
+
+
+#f_hybrid<-getFMort(sim_list[["c_0.4_a_0.5"]], drop = FALSE)
+
+f_status<-f_whole[99,,]
+f_status<-as.data.frame.table(f_status)
+f_status$w<-as.character(f_status$w)
+f_status$w<-as.numeric(f_status$w)
+
+#size dependent fishing mortality
+g1<-ggplot(f_status, aes(x=w,y=Freq, group=sp))+
+    geom_line(aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_log10()+
+    labs(title="Status Quo",y= "F (1/year)", x= "w (g)", color="Species")
+
+f_whole_data<-f_whole[699,,]
+f_whole_data<-as.data.frame.table(f_whole_data)
+f_whole_data$w<-as.character(f_whole_data$w)
+f_whole_data$w<-as.numeric(f_whole_data$w)
+g2<-ggplot(f_whole_data, aes(x=w,y=Freq, group=sp))+
+    geom_line(aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_log10()+
+    labs(title="Whole ssBH",y= "F (1/year)", x= "w (g)", color="Species")
+
+
+f_hybrid_data<-f_hybrid[699,,]
+f_hybrid_data<-as.data.frame.table(f_hybrid_data)
+f_hybrid_data$w<-as.character(f_hybrid_data$w)
+f_hybrid_data$w<-as.numeric(f_hybrid_data$w)
+g3<-ggplot(f_hybrid_data, aes(x=w,y=Freq, group=sp))+
+    geom_line(aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_log10()+
+    labs(title="Hybrid",y= "F (1/year)", x= "w (g)", color="Species")
+
+g1 <- g1 + theme(legend.position = "none")
+g2 <- g2 + theme(legend.position = "none")
+g3 <- g3 + theme(legend.position = "none")
+
+plot_grid(
+    plot_grid(g1, g2, g3, ncol = 1),
+    legend,
+    ncol = 2,
+    rel_widths = c(1, 0.25)
+)
+
+
+#Fishing Mortaltiy (1/m^2)
+#Weight (g)
+biomass_whole <- sweep(sim_list[["c_0.4_a_1"]]@n, 3, sim_list[["c_0.4_a_1"]]@params@w * sim_list[["c_0.4_a_1"]]@params@dw, "*")
+biomass_hybrid <- sweep(sim_list[["c_0.4_a_0.5"]]@n, 3, sim_list[["c_0.4_a_0.5"]]@params@w * sim_list[["c_0.4_a_0.5"]]@params@dw, "*")
+
+yield_hybrid<-f_whole[699,,]*biomass_hybrid[699,,]
+yield_hybrid<-as.data.frame.table(yield_hybrid)
+yield_hybrid$w<-as.character(yield_hybrid$w)
+yield_hybrid$w<-as.numeric(yield_hybrid$w)
+
+yield_whole<-f_whole[699,,]*biomass_whole[699,,]
+yield_whole<-as.data.frame.table(yield_whole)
+yield_whole$w<-as.character(yield_whole$w)
+yield_whole$w<-as.numeric(yield_whole$w)
+
+yield_status<-f_whole[99,,]*biomass_whole[99,,]
+yield_status<-as.data.frame.table(yield_status)
+yield_status$w<-as.character(yield_status$w)
+yield_status$w<-as.numeric(yield_status$w)
+
+g4<-ggplot(yield_status, aes(x=w,y=Freq, group=sp))+
+    geom_line(aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_log10()+
+    labs(title= "Status Quo", y= "Yield (g/year/m^2)", x= "w (g)", color="Species")+
+    theme(legend.position = "none")
+
+g5<-ggplot(yield_whole, aes(x=w,y=Freq, group=sp))+
+    geom_line(aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_log10()+
+    labs(title= "Whole ssBH",y= "Yield (g/year/m^2)", x= "w (g)", color="Species")+
+    theme(legend.position = "none")
+
+g6<-ggplot(yield_hybrid, aes(x=w,y=Freq, group=sp))+
+    geom_line(aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_log10()+
+    labs(title= "Hybrid", y= "Yield (g/year/m^2)", x= "w (g)", color="Species")+
+    theme(legend.position = "none")
+
+legend <- get_legend(
+    g1 +
+        theme(legend.position = "right") +
+        guides(color = guide_legend(ncol = 1))  # force vertical
+)
+
+g1 <- g1 + theme(legend.position = "none")
+g2 <- g2 + theme(legend.position = "none")
+g3 <- g3 + theme(legend.position = "none")
+
+plot_grid(
+    plot_grid(g1,g4,g2,g5,g3,g6, ncol = 2),
+    NULL,
+    legend,
+    ncol = 3,
+    rel_widths = c(1, 0.05,0.25)
+)
+#this weight dependency allows for these yields to be so so high. Because mackerel
+#is being fished between
+
+#each species plot with the yield from each regime
+yield_hybrid$type<-"hybrid"
+yield_whole$type<-"whole"
+yield_status$type<-"status"
+
+yield<-rbind(yield_hybrid,yield_whole,yield_status)
+
+horse_mackerel_yield<-subset(yield, sp=="Horse mackerel")
+g1<-ggplot(horse_mackerel_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Horse mackerel")+
+    theme(legend.position = "none")
+
+mackerel_yield<-subset(yield, sp=="Mackerel")
+g2<-ggplot(mackerel_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Mackerel")+
+    theme(legend.position = "none")
+
+blue_whiting_yield<-subset(yield, sp=="Blue whiting")
+g3<-ggplot(blue_whiting_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Blue whiting")+
+    theme(legend.position = "none")
+
+boarfish_yield<-subset(yield, sp=="Boarfish")
+g4<-ggplot(boarfish_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Boarfish")+
+    theme(legend.position = "none")
+
+cod_yield<-subset(yield, sp=="Cod")
+g5<-ggplot(cod_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Cod")+
+    theme(legend.position = "none")
+
+haddock_yield<-subset(yield, sp=="Haddock")
+g6<-ggplot(haddock_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Haddock")+
+    theme(legend.position = "none")
+
+hake_yield<-subset(yield, sp=="Hake")
+g7<-ggplot(hake_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Hake")+
+    theme(legend.position = "none")
+
+herring_yield<-subset(yield, sp=="Herring")
+g8<-ggplot(herring_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Herring")+
+    theme(legend.position = "none")
+
+megrim_yield<-subset(yield, sp=="Megrim")
+g9<-ggplot(megrim_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Megrim")+
+    theme(legend.position = "none")
+
+monkfish_yield<-subset(yield, sp=="Monkfish")
+g10<-ggplot(monkfish_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Monkfish")+
+    theme(legend.position = "none")
+
+plaice_yield<-subset(yield, sp=="Plaice")
+g11<-ggplot(plaice_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Plaice")+
+    theme(legend.position = "none")
+
+red_gurnard_yield<-subset(yield, sp=="Red gurnard")
+g12<-ggplot(red_gurnard_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Red gurnard")+
+    theme(legend.position = "none")
+
+sole_yield<-subset(yield, sp=="Sole")
+g13<-ggplot(sole_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Sole")+
+    theme(legend.position = "none")
+
+whiting_yield<-subset(yield, sp=="Whiting")
+g14<-ggplot(whiting_yield, aes(x=w,y=Freq, group=type))+
+    geom_line(aes(color=type))+
+    theme_cowplot(12)+
+    labs(title= "Whiting")+
+    theme(legend.position = "none")
+
+legend <- get_legend(
+    g1 +
+        theme(legend.position = "right") +
+        guides(color = guide_legend(ncol = 1))  # force vertical
+)
+
+
+plot_grid(
+    plot_grid(g1, g2, g3,g4,g5,g6,g7,g8,g9,g10,g11,g12,g13,g14, ncol = 3),
+    legend,
+    ncol = 2,
+    rel_widths = c(2, 0.25)
+)
+
+
+
+#plot the Biomass
+plotBiomass(sim_list[["c_0.4_a_1"]])+theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))
+plotBiomass(sim_list[["c_0.4_a_0.5"]])+theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))
