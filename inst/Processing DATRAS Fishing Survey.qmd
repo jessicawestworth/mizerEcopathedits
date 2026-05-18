@@ -317,5 +317,12 @@ survey_length_distribution<-survey_length_distribution%>%
     mutate(species=Scientific_name,
            Scientific_name = recode(Scientific_name, !!!new_species_names))
 
+#Remove dragonet due to male semelparity which could not be recreated in catches and normalise catch distributions
+survey_length_distribution<-survey_length_distribution%>%
+    filter(!species=="Dragonet")%>%
+    group_by(species, gear) %>%
+    mutate(catch = catch / sum(catch, na.rm = TRUE)) %>%
+    ungroup()
+
 #use_data(survey_length_distribution, overwrite=TRUE)
 ```
