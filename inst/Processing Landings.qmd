@@ -1020,7 +1020,9 @@ fishing_deaths<-fishing_deaths%>%
 
 #Remove dragonet due to male semelparity which could not be reproduced in the model
 catch_distribution<-catch_distribution%>%filter(!species=="Dragonet")
+fishing_death<-fishing_deaths%>%filter(!species=="Dragonet")
+
 
 #use_data(catch_distribution, overwrite = TRUE)
-#use_data(fishing_deaths, overwrite = TRUE)
+#use_data(fishing_death, overwrite = TRUE)
 ```

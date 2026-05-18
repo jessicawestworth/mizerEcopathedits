@@ -50,7 +50,7 @@ The R code files and the accompanying report section are described below:
 * 7.1.6 Reformulating the diet matrix: inst/Processing Ecopath Diet Matrix.qmd
 
 **Data Matching**:
-* Age Matching: R/plotAge.R & simulateAge.R & AgeDensity.R
+* Age Matching: R/plotAge.R & R/simulateAge.R & R/AgeDensity.R
 * Length Distribution Matching: R/plot_catch.R
 * Visual Matching Shiny App: R/ecopath_tune.R
 
@@ -66,15 +66,19 @@ The R code files and the accompanying report section are described below:
 * 3.12 Sensitivity Analysis: inst/Sensitivity Analysis.R
 
 ## Model Creation Data Files
-1. diets.rda
-2. stomach_data_fit.rda
-3. survey_length_distribution.rda
-4. life_history_fishbase.rda
-5. fishing_deaths.rda
-6. cs_age_size.rda
+1. data/diets.rda
+2. data/stomach_data_fit.rda
+3. data/survey_length_distributions.rda
+3. data/catch_distributions.rda
+4. data/life_histories.rda
+5. data/fishing_death.rda
+6. data/cs_age_size.rda
+7. data/ICES_Rectangle_to_Area.rda
 
-## Non-interacting Celtic Sea Status Quo model
-inst/final7.rds
+## Models
+data/non_int_tuned_model.rda
+data/status_quo_interacting_model.rda
+
 
 ## Installation
 You can install the required version of mizerEcopath and mizer from [GitHub](https://github.com/) with:
