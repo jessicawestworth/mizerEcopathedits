@@ -7,7 +7,7 @@ editor: visual
 
 # Introduction
 
-Creating a model representing the average state of the Celtic Sea from 2012 to 2024. Composed of 15 species: herring (*Clupea harengus*), cod (*Gadus morhua*), haddock (*Melanogrammus aeglefinus*), whiting (*Merlangius merlangus*), blue whiting (*Micromesistius poutassou*), hake (*Merluccius merluccius*), monkfish (Lophius piscatorius), horse mackerel (*Trachurus trachurus*), mackerel (*Scomber scombrus*), plaice (*Pleuronectes platessa*), megrim (*Lepidorhombus whiffiagonis*), sole (*Solea solea*), boarfish (*Capros aper*), dragonet (Callionymus spp.), and red gurnard (Chelidonicthys cuculus).
+Creating a model representing the average state of the Celtic Sea from 2012 to 2024. Composed of 14 species: herring (*Clupea harengus*), cod (*Gadus morhua*), haddock (*Melanogrammus aeglefinus*), whiting (*Merlangius merlangus*), blue whiting (*Micromesistius poutassou*), hake (*Merluccius merluccius*), monkfish (Lophius piscatorius), horse mackerel (*Trachurus trachurus*), mackerel (*Scomber scombrus*), plaice (*Pleuronectes platessa*), megrim (*Lepidorhombus whiffiagonis*), sole (*Solea solea*), boarfish (*Capros aper*), and red gurnard (Chelidonicthys cuculus).
 
 ## Loading in Repository and Libraries
 
@@ -16,9 +16,6 @@ Creating a model representing the average state of the Celtic Sea from 2012 to 2
 #| message: false
 #| results: 'hide'
 
-#library(remotes)
-#install_github("sizespectrum/mizer", ref="diffusion_gemini")
-#install_github("gustavdelius/mizerEcopath", ref="spawning_season") 
 library(mizer)
 library(mizerEcopath)
 library(dplyr)
@@ -34,64 +31,23 @@ Data includes: life_history parameters (l_mat and age_mat calculated from DATRAS
 #| message: false
 #| results: 'hide'
 
-#Life history data from fishbase
-data(life_history_fishbase)
-life_history_fishbase$l_mat<-c(27.15, 42.36707, 23.473, 21.13458, 25.1, 32.87942, 55.0, 22.9, 28.06812, 17.73243, 20.62504, 20.8603,  9.2, 21.31807)
-
-#maturity values calculated from survey data
-#data(cs_calculated_histories)
-
-    #combine life_history_fishbase and calculated l_mat
-#life_histories<-life_history_fishbase%>%
-#    mutate(
-#        l_mat=case_when(
-#        l_mat.y %in% c(NA_character_) ~ l_mat.x,
-#        TRUE ~ l_mat.y),
-#        age_mat=case_when(
-#        age_mat.x %in% c(NA_character_) ~ age_mat.y,    
-#        TRUE ~ age_mat.x))%>%
-#    arrange(species)%>%
-#    select(-l_mat.x, -l_mat.y, -age_mat.x, -age_mat.y)
+#Load life history data
+data(life_histories)
 
 #Load in ecopath data
-ecopath_estimates <- read.csv(here("inst","extdata","Ecopath-Basic estimates.csv"))
-
-Gurnards <- ecopath_estimates[46, ]
-Boarfish <- ecopath_estimates[49, ]
-num_cols <- sapply(Gurnards, is.numeric)
-Red_gurnard<-Gurnards
-Other_Gurnards<-Gurnards
-Boarfish<-Boarfish
-Small_pelag<-Boarfish
-Red_gurnard[num_cols] <- Gurnards[num_cols] * 0.37
-Red_gurnard$Group.name<-"Red gurnard"
-Other_Gurnards[num_cols] <- Gurnards[num_cols] * 0.63
-Boarfish[num_cols]<- Boarfish[num_cols] * 0.97
-Boarfish$Group.name<-"Boarfish"
-Small_pelag[num_cols]<- Boarfish[num_cols] * 0.03
-#doesn't matter that tropic level and hab area are being affected as they are not used in calculations
-ecopath_params<-ecopath_estimates[-c(46,49),]
-ecopath_params<-rbind(ecopath_params,Other_Gurnards, Red_gurnard, Boarfish, Small_pelag)
+data(ecopath_params)
 
 #Diet matrix
 data(diet)
 
 #Deaths from fishing
-data(fishing_deaths)
+data(fishing_death)
 
 #Catch Distribution
-data(catch_distribution)
-catch_distribution<-catch_distribution%>%filter(!species=="Dragonet")
-
+data(catch_distributions)
 
 #DATRAS size distribution
-data(survey_length_distribution)
-
-survey_length_distribution<-survey_length_distribution%>%
-    filter(!species=="Dragonet")%>%
-    group_by(species, gear) %>%
-    mutate(catch = catch / sum(catch, na.rm = TRUE)) %>%
-    ungroup()
+data(survey_length_distributions)
 
 #DATRAS age at length distribution
 data(cs_age_size)
@@ -99,7 +55,7 @@ boar<-readRDS("/Users/jessicawestworth/Desktop/boarfish_struct_like_DATRAS.rds")
 cs_age_size<-rbind(cs_age_size,boar)
 
 #determining l_max comparing landings max length versus fishbase max length recorded value
-observed_max <- catch_distribution %>%
+observed_max <- catch_distributions %>%
      group_by(species) %>%
      summarise(
          obs_len = if (all(is.na(length + dl))) NA_real_ else max(length + dl, na.rm = TRUE)
@@ -111,7 +67,7 @@ life_histories <- life_history_fishbase %>%
     select(-obs_len)
 
 #combined survey fishing and STECF fishing
-all_fishing<-rbind(catch_distribution,survey_length_distribution)
+all_fishing<-rbind(catch_distributions,survey_length_distributions)
 ```
 
 ## Species Parameters
@@ -180,12 +136,12 @@ sp<-sp[c(5,13,2,3,6,1,8,9,11,7,10,14,12,4),]
 ## Build Non-Interacting Model
 
 ```{r}
-model_non_int <- newAllometricParams(sp_params, no_w = 200)
+model_non_int <- newAllometricParams(sp, no_w = 200)
 
 ## Add gear params
-model_non_int <- addCatch(model_non_int, landings= catch_distribution,
-                              fishing_dead_biomass=fishing_deaths,
-                              survey= survey_length_distribution,step=2)
+model_non_int <- addCatch(model_non_int, landings= catch_distributions,
+                              fishing_dead_biomass=fishing_death,
+                              survey= survey_length_distributions,step=2)
 
 # Steady model
 model_non_int <- model_non_int %>%
@@ -208,12 +164,11 @@ for(i in 1:length(sps$species)){
 sps$Eiw<-initial_Eiw
 species_params(model_non_int)<-sps
 
-#set the spawning time, spawning concentration and mu mortality of species to predetermined values.
-
-#spawning_mort<-tuneEcopath(
-#    model_non_int, 
-#    catch = all_fishing,
-#    age_at_length = cs_age_size)
+#set the spawning time, spawning concentration to literature values.
+spawning_mort<-tuneEcopath(
+    model_non_int, 
+    catch = all_fishing,
+    age_at_length = cs_age_size)
 
 #saveRDS(spawning_mort,"/Users/jessicawestworth/Desktop/spawning_mort.rds")
 ```
@@ -222,17 +177,10 @@ species_params(model_non_int)<-sps
 
 ```{r}
 #| eval: false
-#Adjust diet matrix for integration into model using reduceEcopathDiet
-dm<-reduceEcopathDiet(
-    species_params = species_params(final7),
-    ecopath_diet   = diet,
-    ecopath_params = ecopath_params
-)
-
 # Stomach-fit parameters (keep separate; align by scientific name), cannot do right now because the new species are not in the processed file right now so... yeah...
 data(stomach_data_fit)
 stf<-stomach_data_fit
-sp  <- species_params(final)
+sp  <- species_params(spawning_mort)
 idx <- match(sp$Scientific_name, stf$species)  # align order to species_params
 
 lambda <- 2
@@ -243,54 +191,50 @@ sp$kernel_u_l <- stf$ul[idx]
 sp$kernel_l_r <- stf$lr[idx]
 sp$kernel_u_r <- stf$ur[idx]
 
-species_params(model_non_int) <- sp
+species_params(spawning_mort) <- sp
+
+#Adjust diet matrix for integration into model using reduceEcopathDiet
+dm<-reduceEcopathDiet(
+    species_params = species_params(spawning_mort),
+    ecopath_diet   = diet,
+    ecopath_params = ecopath_params
+)
 ```
 
 # Continuous Re-tuning
 
 ```{r}
 #| eval: false
-initial<-readRDS("/Users/jessicawestworth/Desktop/initial.rds")
-initial<-validParams(initial)
+p<-spawning_mort
 
-final7<-readRDS("/Users/jessicawestworth/Desktop/Status Quo Starting Models/final7.rds")
-p<-setDiffusion(final7)
-#p<-setFeedingLevels(p, f=0.6,f_c=0.2)
-#p<-matchDiet(p, diet_matrix=dm)
-blue<-tuneEcopath(
+#Tune model in the tuning app
+non_int_tuned_model<-tuneEcopath(
     p, 
     catch = all_fishing,
     age_at_length = cs_age_size,
     diet = dm)
 
-#steadySingleSpecies(blue_whiting)
-#saveRDS(blue,"/Users/jessicawestworth/Desktop/Status Quo Starting Models/final5.rds")
+#Set Diffusion matrix as tuned app does not save into the model currently
+non_int_tuned_model<-setDiffusion(non_int_tuned_model)
+
+#Retrieve tuned model
+data(non_int_tuned_model)
 ```
 
 # Prepare Model for Projection
 
 ```{r}
 #| eval: false
-s<-mizer::steadySingleSpecies(final7)
+#ensure model is in a steady state
+s<-mizer::steadySingleSpecies(non_int_tuned_model)
+#set the feeding levels
 g<-setFeedingLevels(params=s, f=0.6, f_c=0.2)
-p<-mizer::steadySingleSpecies(g)
-plotSpectra2(p,s)
+#ensure model is in a steady state
+f<-mizer::steadySingleSpecies(g)
 
-params <- p
+params <- f
 dm <- dm
 params <- validParams(params)
-
-# Set diffusion from d_over_g
-# d(w) = d_over_g * g(w) * w
-for (species in species_params(params)$species) {
-    d_over_g <- species_params(params)[species, "d_over_g"]
-    w <- params@w
-    growth <- getEGrowth(params)[species, ]
-    n <- params@species_params[species, "n"]
-    g_0 <- growth[1] / w[1]^n
-    d_0 <- d_over_g * g_0
-    diffusion(params)[species, ] <- d_0 * w^(n + 1)
-}
 
 resource_params(params)$w_pp_cutoff <- 1
 
@@ -301,23 +245,13 @@ ps <- params |>
     matchDiet(dm) |>
     setBevertonHolt(reproduction_level = 0.8)
 
-ps_non<-unserialize(serialize(ps, NULL))
+status_quo_interacting_model<-ps
 
-#Project
-sim1 <- project(ps, t_max = 300,effort=1)
-
-#Compare the status quo projection to status quo initial params object
-plotBiomass(sim1)
-
-#sim2 <- project(ps, t_max = 100)
-
-#plotBiomass(sim2)
-
-#plotSpectra2(ps,params)
-#plotSpectra2(sim,ps)
+#Retrieve interacting model
+data(status_quo_interacting_model)
 ```
 
-# BH Model Projection
+# BH Model Projection Example
 
 ```{r}
 #| eval: false
@@ -340,23 +274,6 @@ sim_BH_start<- setRateFunction(ps, "FMort", "my_blender")
 # Use effort = 1; the blender handles the internal weights
 sim_BH_4 <- project(sim_BH_start, t_max = t_duration, effort = 1)
 
+#plotBiomasses overtime
 plotlyBiomass(sim_BH_4)
-```
-
-# Compare the Status Quo Sim to the Balanced Harvest Sim
-
-```{r}
-#| eval: false
-#Compare
-sim_list<-readRDS("/Users/jessicawestworth/Desktop/BH simulations/sim_list_extended/sim_list.rds")
-
-p<-readRDS("/Users/jessicawestworth/Desktop/BH simulations/p_extended_time/p_extended_time.rds")
-```
-
-Comparing
-
-```{r}
-#| eval: false
-#Fishing Mort
-
 ```
