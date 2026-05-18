@@ -36,34 +36,34 @@ The model is highly parameterized and tuned using regional empirical data from t
 ## Files and Accompanying Report Sections
 The R code files and the accompanying report section are described below:
 
-* Data Processing
-7.1.2.1 ICES Rectangle Area Mapping: inst/ICES Statistical Rectangles to ICES Areas.qmd
-7.1.2.2 Processing Length Distribution: inst/Processing DATRAS Fishing Survey.qmd
-7.2.2.3 Processing Stratified Age at Length data: 
-7.1.2.4 Processing Boarfish Data:inst/Length Stratify Boarfish Data.qmd
-7.1.2.5 Calculating w_mat and w_mat25
-7.1.3. Processing Landings: Processing Landings.qmd
-7.1.3.1 Discard Rates and Total Yield Calculation: inst/Calculate Biomass Discard Rate.qmd
-7.1.3.2 Size-specific Mortaltiy Distributions:  inst/Processing Landings.qmd
-7.1.3.3 Gear Categorization:  inst/Processing Landings.qmd
-7.1.5 Calculating the interaction matrix: R/reduceEcopathDiet.R
-7.1.6 Reformulating the diet matrix: inst/Processing Ecopath Diet Matrix.qmd
+**Data Processing**
+*7.1.2.1 ICES Rectangle Area Mapping: inst/ICES Statistical Rectangles to ICES Areas.qmd
+*7.1.2.2 Processing Length Distribution: inst/Processing DATRAS Fishing Survey.qmd
+*7.2.2.3 Processing Stratified Age at Length data: 
+*7.1.2.4 Processing Boarfish Data:inst/Length Stratify Boarfish Data.qmd
+*7.1.2.5 Calculating w_mat and w_mat25
+*7.1.3. Processing Landings: Processing Landings.qmd
+*7.1.3.1 Discard Rates and Total Yield Calculation: inst/Calculate Biomass Discard Rate.qmd
+*7.1.3.2 Size-specific Mortaltiy Distributions:  inst/Processing Landings.qmd
+*7.1.3.3 Gear Categorization:  inst/Processing Landings.qmd
+*7.1.5 Calculating the interaction matrix: R/reduceEcopathDiet.R
+*7.1.6 Reformulating the diet matrix: inst/Processing Ecopath Diet Matrix.qmd
 
-* Data Matching
-Age Matching: R/plotAge.R & simulateAge.R & AgeDensity.R
-Length Distribution Matching: R/plot_catch.R
-Visual Matching Shiny App: R/ecopath_tune.R
+**Data Matching**
+*Age Matching: R/plotAge.R & simulateAge.R & AgeDensity.R
+*Length Distribution Matching: R/plot_catch.R
+*Visual Matching Shiny App: R/ecopath_tune.R
 
-* Model Celtic Sea Creation Workflow
-3.1-3.8: vignettes/Celtic Sea Status Quo Model.qmd
+**Model Celtic Sea Creation Workflow**
+*3.1-3.8: vignettes/Celtic Sea Status Quo Model.qmd
 
-* Balanced Harvest
-3.9 Calculating ssBH: R/flux.R
-3.10.2 Gradual Implementation: R/make_blended_ssBH_FMort.R
+**Balanced Harvest**
+*3.9 Calculating ssBH: R/flux.R
+*3.10.2 Gradual Implementation: R/make_blended_ssBH_FMort.R
 
-* Model Projection and Results
-3.10 & 3.11 Evaluation Metrics: inst/create_alpha_c_sims.R
-3.12 Sensitivity Analysis: inst/Sensitivity Analysis.R
+**Model Projection and Results**
+*3.10 & 3.11 Evaluation Metrics: inst/create_alpha_c_sims.R
+*3.12 Sensitivity Analysis: inst/Sensitivity Analysis.R
 
 ## Model Creation Data Files
 1. diets.rda
