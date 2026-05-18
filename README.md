@@ -1,4 +1,4 @@
-# mizerEcopath: Extending Ecopath to Mizer
+# Balanced Harvesting in the Celtic Sea: Using Mizer Modelling to Determine Optimal Fishing Regimes
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
