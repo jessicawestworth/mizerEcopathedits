@@ -19,7 +19,7 @@ This repository includes the code for data processing, model creation, model pro
 3. How does a transition to a hybrid or entirely ssBH regime redistribute yields across the food web?
 4. What are the underlying ecological processes driving these shifts when transitioning from the status quo?
 
-##Methodology & Model Workflow
+## Methodology & Model Workflow
 The framework modifies the standard `mizer` implementation (Scott et al., 2014) to enhance biological realism. The modeling process consists of:
 
 1. **Status Quo Baseline (2012–2024):** Construction of a non-interacting, steady-state allometric model calibrated using extensive empirical data from the Celtic Sea.
