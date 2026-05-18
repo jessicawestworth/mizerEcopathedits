@@ -36,7 +36,7 @@ The model is highly parameterized and tuned using regional empirical data from t
 ## Files and Accompanying Report Sections
 The R code files and the accompanying report section are described below:
 
-**Data Processing**
+**Data Processing**:
 *7.1.2.1 ICES Rectangle Area Mapping: inst/ICES Statistical Rectangles to ICES Areas.qmd
 *7.1.2.2 Processing Length Distribution: inst/Processing DATRAS Fishing Survey.qmd
 *7.2.2.3 Processing Stratified Age at Length data: 
