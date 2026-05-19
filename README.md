@@ -80,11 +80,6 @@ The R code files and the accompanying report section are described below:
 * data/non_int_tuned_model.rda
 * data/status_quo_interacting_model.rda
 
-## Simulations
-* Simulations from the main analysis: data/sim_list.rda
-* Simulations from the Morris sensitivity analysis: data/sensitivity_sim_list.rda
-* Simulations from the RSA: provided upon request as the file size is large
-
 ## Installation
 You can install the required version of mizerEcopath and mizer from [GitHub](https://github.com/) with:
 
