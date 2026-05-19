@@ -1,4 +1,4 @@
-# Balanced Harvesting in the Celtic Sea: Using Mizer Modelling to Determine Optimal Fishing Regimes
+# Balanced Harvesting Effects: Size Spectrum Model of Production-Proportional Fishing in the Celtic Sea
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
@@ -9,7 +9,7 @@ This repository contains the dynamic multi-species size-spectrum modeling framew
 The framework for setting up and calibrating all multi-species size spectrum models used the [mizer](https://sizespectrum.org/mizer/) and [mizerEcopath](https://gustavdelius.github.io/mizerEcopath/) packages.
 
 ## Project Overview
-This repository includes the code for data processing, model creation, model projection, results evalution and sensivity analysis for the dissertation report "BALANCED HARVESTING IN THE CELTIC SEA: USING MIZER MODELLING TO DETERMINE OPTIMAL FISHING REGIMES". Traditional fisheries management often relies on Total Allowable Catches (TACs) derived from single-species MSY models coupled with strict size-selective limits. While designed to optimize yield-per-recruit, this approach heavily biases mortality toward large-bodied, high-trophic-level predators, destabilizing ecosystem structure and removing highly fecund individuals that buffer recruitment variability.
+This repository includes the code for data processing, model creation, model projection, results evalution and sensivity analysis for the dissertation report "BALANCED HARVESTING EFFECTS: SIZE SPECTRUM MODELLING OF PRODUCTION-PROPORTIONAL FISHING IN THE CELTIC SEA". Traditional fisheries management often relies on Total Allowable Catches (TACs) derived from single-species MSY models coupled with strict size-selective limits. While designed to optimize yield-per-recruit, this approach heavily biases mortality toward large-bodied, high-trophic-level predators, destabilizing ecosystem structure and removing highly fecund individuals that buffer recruitment variability.
 
 **Balanced Harvesting (BH)** offers an alternative by distributing fishing mortality across the widest possible range of species and sizes in proportion to their natural productivity or production. This repository focuses specifically on **species-and-size-level Balanced Harvesting (ssBH)**—where fishing mortality scales directly with biological *production* (biomass produced per unit time), acting as a density-dependent safeguard against stock collapse.
 
@@ -25,7 +25,7 @@ The framework modifies the standard `mizer` implementation (Scott et al., 2014) 
 1. **Status Quo Baseline (2012–2024):** Construction of a non-interacting, steady-state allometric model calibrated using extensive empirical data from the Celtic Sea.
 2. **Dynamic Calibration:** Interspecific interactions (predation, growth, biomass flux) are enabled, and the model is simulated forward to a steady state.
 3. **Scenario Projections:** Execution of hundreds of multi-species simulations exploring fully ssBH and "hybrid" fishing regimes (ssBH implemented alongside status quo practices) across a gradient of fishing intensities.
-4. **Robustness Testing:** Due to exhaustive data utilization preventing independent dataset validation, model stability and parameter uncertainty are evaluated using **Morris and Regional Sensitivity Analyses**.
+4. **Robustness Testing:** Due to exhaustive data utilization preventing independent dataset validation, model stability and parameter uncertainty are evaluated using **Morris and Regional Sensitivity Analyses (RSA)**.
 
 ## Data Sources
 The model is highly parameterized and tuned using regional empirical data from the Celtic Sea ecosystem:
@@ -55,30 +55,35 @@ The R code files and the accompanying report section are described below:
 * Visual Matching Shiny App: R/ecopath_tune.R
 
 **Model Celtic Sea Creation Workflow**:
-* 3.1-3.8: vignettes/Celtic Sea Status Quo Model.qmd
+* 3.1-3.11: vignettes/Celtic Sea Status Quo Model.qmd
 
 **Balanced Harvest**:
 * 3.9 Calculating ssBH: R/flux.R
 * 3.10.2 Gradual Implementation: R/make_blended_ssBH_FMort.R
 
 **Model Projection and Results**:
-* 3.10 & 3.11 Evaluation Metrics: inst/create_alpha_c_sims.R
-* 3.12 Sensitivity Analysis: inst/Sensitivity Analysis.R
+* 3.13 Projecting ssBH & 3.14 Evaluation Metrics: inst/create_alpha_c_sims.R
+* 3.15 Sensitivity Analysis: inst/Sensitivity Analysis.R
 
-## Model Creation Data Files
-1. data/diets.rda
-2. data/stomach_data_fit.rda
-3. data/survey_length_distributions.rda
-3. data/catch_distributions.rda
-4. data/life_histories.rda
-5. data/fishing_death.rda
-6. data/cs_age_size.rda
-7. data/ICES_Rectangle_to_Area.rda
+## Processed Data Files
+1. Lauria Diet Matrix: data/diets.rda
+2. Mizer Diet Matix: inst/extdata/dm.rds
+3. Predation Kernel Fits: data/stomach_data_fit.rda
+4. STECF Length Distributions:data/catch_distributions.rda
+5. DATRAS Length Distributions: data/survey_length_distributions.rda
+6. DATRAS Age-Length Distributions: data/cs_age_size.rda
+7. Literature Species Parameter Values:data/life_histories.rda
+8. Total Biomass Dead from Fishing:data/fishing_death.rda
+9. ICES Rectangle Area Mapping: data/ICES_Rectangle_to_Area.rda
 
 ## Models
-data/non_int_tuned_model.rda
-data/status_quo_interacting_model.rda
+* data/non_int_tuned_model.rda
+* data/status_quo_interacting_model.rda
 
+## Simulations
+* Simulations from the main analysis: data/sim_list.rda
+* Simulations from the Morris sensitivity analysis: data/sensitivity_sim_list.rda
+* Simulations from the RSA: provided upon request as the file size is large
 
 ## Installation
 You can install the required version of mizerEcopath and mizer from [GitHub](https://github.com/) with:

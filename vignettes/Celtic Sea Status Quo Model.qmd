@@ -247,7 +247,7 @@ ps <- params |>
 
 status_quo_interacting_model<-ps
 
-#Retrieve interacting model
+#Retrieve previously tuned interacting model
 data(status_quo_interacting_model)
 ```
 

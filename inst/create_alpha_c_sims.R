@@ -1,11 +1,12 @@
-library(cowplot)
-
+#Create Model ssBH Simulations
 t_duration <- 700
 t_steadied <- 100
 t_blended <- 200
 
+#species from the model
 species_vec <- species_params(params)$species
 
+#define fishing intensity (c) and weightings (alpha)
 p <- expand.grid(
     species = species_vec,
     c = c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,2,3,4,5,6,7,8,9,10),
@@ -24,6 +25,8 @@ p$BH_N <- NA
 #Yield_list <-list()
 #sim_list <- list()
 
+#Run the simulation code and create the model and save it for each c and alpha
+#combination
 for(c_val in unique(p$c)){
 
     for(alpha_val in unique(p$alpha)){
@@ -71,9 +74,14 @@ for(c_val in unique(p$c)){
 #save Yield
 ##saveRDS(Yield_list, "/Users/jessicawestworth/Desktop/BH simulations/yield_extended/Yield_extended_time.rds")
 
+#Sim list with the 220 models contained within:
 sim_list<-readRDS("/Users/jessicawestworth/Desktop/BH simulations/sim_list_extended/sim_list.rds")
+
+#Species specific Metrics values from the Simulation
 p<-readRDS("/Users/jessicawestworth/Desktop/BH simulations/p_extended_time/p_extended_time.rds")
-#Full BH plots (where: alpha=1)
+
+#Plotting how in full ssBH regimes how the steady state is different across
+#simulations with different fishing intensities
 p_full<-p%>%
     filter(c>0,alpha==1)
 
@@ -645,7 +653,7 @@ g1<-ggplot(f_status, aes(x=w,y=Freq, group=sp))+
     scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_log10()+
-    labs(title="Status Quo",y= "F (1/year)", x= "w (g)", color="Species")
+    labs(title="Status Quo",y= "F", x= "w (g)", color="Species")
 
 f_whole_data<-f_whole[699,,]
 f_whole_data<-as.data.frame.table(f_whole_data)
@@ -658,7 +666,7 @@ g2<-ggplot(f_whole_data, aes(x=w,y=Freq, group=sp))+
     scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_log10()+
-    labs(title="Whole ssBH",y= "F (1/year)", x= "w (g)", color="Species")
+    labs(title="Whole ssBH",y= "F", x= "w (g)", color="Species")
 
 
 f_hybrid_data<-f_hybrid[699,,]
@@ -672,7 +680,7 @@ g3<-ggplot(f_hybrid_data, aes(x=w,y=Freq, group=sp))+
     scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_log10()+
-    labs(title="Hybrid",y= "F (1/year)", x= "w (g)", color="Species")
+    labs(title="Hybrid",y= "F", x= "w (g)", color="Species")
 
 g1 <- g1 + theme(legend.position = "none")
 g2 <- g2 + theme(legend.position = "none")
@@ -713,7 +721,7 @@ g4<-ggplot(yield_status, aes(x=w,y=Freq, group=sp))+
     scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_log10()+
-    labs(title= "Status Quo", y= "Yield (g/year/m^2)", x= "w (g)", color="Species")+
+    labs(title= "Status Quo", y= "Yield", x= "w (g)", color="Species")+
     theme(legend.position = "none")
 
 g5<-ggplot(yield_whole, aes(x=w,y=Freq, group=sp))+
@@ -723,7 +731,7 @@ g5<-ggplot(yield_whole, aes(x=w,y=Freq, group=sp))+
     scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_log10()+
-    labs(title= "Whole ssBH",y= "Yield (g/year/m^2)", x= "w (g)", color="Species")+
+    labs(title= "Whole ssBH",y= "Yield", x= "w (g)", color="Species")+
     theme(legend.position = "none")
 
 g6<-ggplot(yield_hybrid, aes(x=w,y=Freq, group=sp))+
@@ -733,7 +741,7 @@ g6<-ggplot(yield_hybrid, aes(x=w,y=Freq, group=sp))+
     scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
     scale_x_log10()+
-    labs(title= "Hybrid", y= "Yield (g/year/m^2)", x= "w (g)", color="Species")+
+    labs(title= "Hybrid", y= "Yield", x= "w (g)", color="Species")+
     theme(legend.position = "none")
 
 legend <- get_legend(
@@ -753,6 +761,63 @@ plot_grid(
     ncol = 3,
     rel_widths = c(1, 0.05,0.25)
 )
+
+
+biomass_hybrid<-biomass_hybrid[699,,]
+biomass_hybrid<-as.data.frame.table(biomass_hybrid)
+biomass_hybrid$w<-as.character(biomass_hybrid$w)
+biomass_hybrid$w<-as.numeric(biomass_hybrid$w)
+
+biomass_status<-biomass_whole[99,,]
+biomass_status<-as.data.frame.table(biomass_status)
+biomass_status$w<-as.character(biomass_status$w)
+biomass_status$w<-as.numeric(biomass_status$w)
+
+biomass_whole<-biomass_whole[699,,]
+biomass_whole<-as.data.frame.table(biomass_whole)
+biomass_whole$w<-as.character(biomass_whole$w)
+biomass_whole$w<-as.numeric(biomass_whole$w)
+
+
+
+g7<-ggplot(biomass_status, aes(x=w,y=Freq, group=sp))+
+    geom_line(aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_log10()+
+    labs(title= "Status Quo", y= "Biomass", x= "w (g)", color="Species")+
+    theme(legend.position = "none")
+
+g8<-ggplot(biomass_whole, aes(x=w,y=Freq, group=sp))+
+    geom_line(aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_log10()+
+    labs(title= "Whole ssBH",y= "Biomass", x= "w (g)", color="Species")+
+    theme(legend.position = "none")
+
+g9<-ggplot(biomass_hybrid, aes(x=w,y=Freq, group=sp))+
+    geom_line(aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_log10()+
+    labs(title= "Hybrid", y= "Biomass", x= "w (g)", color="Species")+
+    theme(legend.position = "none")
+
+plot_grid(
+    plot_grid(g1,g4,g7,g2,g5,g8,g3,g6,g9, ncol = 3),
+    NULL,
+    legend,
+    ncol = 3,
+    rel_widths = c(1, 0.05,0.20)
+)
+
 #this weight dependency allows for these yields to be so so high. Because mackerel
 #is being fished between
 
@@ -878,9 +943,61 @@ plot_grid(
 
 
 #plot the Biomass
-plotBiomass(sim_list[["c_0.4_a_1"]])+theme_cowplot(12)+
-    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
-    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))
-plotBiomass(sim_list[["c_0.4_a_0.5"]])+theme_cowplot(12)+
-    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
-    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))
+biomass_whole <- sweep(sim_list[["c_0.4_a_1"]]@n, 3, sim_list[["c_0.4_a_1"]]@params@w * sim_list[["c_0.4_a_1"]]@params@dw, "*")
+biomass_hybrid <- sweep(sim_list[["c_0.4_a_0.5"]]@n, 3, sim_list[["c_0.4_a_0.5"]]@params@w * sim_list[["c_0.4_a_0.5"]]@params@dw, "*")
+
+
+yield_whole<-biomass_whole*f_whole
+yield_whole<-as.data.frame.table(yield_whole)
+yield_whole$time<-as.character(yield_whole$time)
+yield_whole$time<-as.numeric(yield_whole$time)
+yield_whole<-yield_whole%>%group_by(time, sp)%>%
+    summarise(Freq=sum(Freq))
+
+yield_hybrid<-biomass_hybrid*f_hybrid
+yield_hybrid<-as.data.frame.table(yield_hybrid)
+yield_hybrid$time<-as.character(yield_hybrid$time)
+yield_hybrid$time<-as.numeric(yield_hybrid$time)
+yield_hybrid<-yield_hybrid%>%group_by(time, sp)%>%
+    summarise(Freq=sum(Freq))
+
+g1<-ggplot(yield_whole, aes(x=time,y=Freq, group=sp))+
+    geom_line(linewidth = 0.8,aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_log10(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(title="Whole ssBH", y= "Yield", x= "Year", color="Species")+
+    theme(legend.position = "none")
+
+g2<-ggplot(yield_hybrid, aes(x=time,y=Freq, group=sp))+
+    geom_line(linewidth = 0.8,aes(color=sp))+
+    scale_colour_manual(values = params@linecolour)+
+    theme_cowplot(12)+
+    scale_y_log10(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(title="Hybrid", y= "Yield", x= "Year", color="Species")+
+    theme(legend.position = "none")
+
+g3<-plotBiomass(sim_list[["c_0.4_a_1"]])+theme_cowplot(12)+
+    scale_y_log10(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(title="Whole ssBH")+
+    theme(legend.position = "none")
+g4<-plotBiomass(sim_list[["c_0.4_a_0.5"]])+theme_cowplot(12)+
+    scale_y_log10(expand = expansion(mult = c(0, 0.05)))+
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05)))+
+    labs(title="Hybrid")+
+    theme(legend.position = "none")
+legend <- get_legend(
+    g1 +
+        theme(legend.position = "right") +
+        guides(color = guide_legend(ncol = 1))  # force vertical
+)
+plot_grid(
+    plot_grid(g1, g2, g3,g4, ncol = 2),
+    legend,
+    ncol = 2,
+    rel_widths = c(2, 0.39)
+)
+

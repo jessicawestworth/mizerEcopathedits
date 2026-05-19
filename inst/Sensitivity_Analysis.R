@@ -346,13 +346,15 @@ results_summary_yield <- data.frame(
     sigma = apply(m_Yield$ee, 2, sd)
     )
 
-ggplot(results_summary_yield, aes(x = mu_star, y = sigma, label = parameter)) +
+g1<-ggplot(results_summary_yield, aes(x = mu_star, y = sigma, label = parameter)) +
     geom_point() +
     geom_text(vjust = -0.5) +
-    labs(title = "Morris Sensitivity Yield (Benoit et al. Style)",
+    labs(title = "Morris Sensitivity Yield",
                 x = "Mean Absolute Effect (mu*)",
                 y = "Standard Deviation (sigma)") +
-    theme_minimal()
+    scale_x_continuous(limits = c(-0, 3))+
+    scale_y_continuous(limits = c(-0, 1))+
+    theme_cowplot(12)
 
 results_summary_biomass <- data.frame(
     parameter = names(param_ranges),
@@ -360,13 +362,15 @@ results_summary_biomass <- data.frame(
     sigma = apply(m_Biomass$ee, 2, sd)
 )
 
-ggplot(results_summary_biomass, aes(x = mu_star, y = sigma, label = parameter)) +
+g2<-ggplot(results_summary_biomass, aes(x = mu_star, y = sigma, label = parameter)) +
     geom_point() +
     geom_text(vjust = -0.5) +
-    labs(title = "Morris Sensitivity Biomass (Benoit et al. Style)",
+    labs(title = "Morris Sensitivity Biomass",
          x = "Mean Absolute Effect (mu*)",
          y = "Standard Deviation (sigma)") +
-    theme_minimal()
+    scale_x_continuous(limits = c(-0, 37))+
+    scale_y_continuous(limits = c(-0, 14))+
+    theme_cowplot(12)
 
 results_summary_SSB <- data.frame(
     parameter = names(param_ranges),
@@ -374,13 +378,15 @@ results_summary_SSB <- data.frame(
     sigma = apply(m_SSB$ee, 2, sd)
 )
 
-ggplot(results_summary_SSB, aes(x = mu_star, y = sigma, label = parameter)) +
+g3<-ggplot(results_summary_SSB, aes(x = mu_star, y = sigma, label = parameter)) +
     geom_point() +
     geom_text(vjust = -0.5) +
-    labs(title = "Morris Sensitivity SSB (Benoit et al. Style)",
+    labs(title = "Morris Sensitivity SSB",
          x = "Mean Absolute Effect (mu*)",
          y = "Standard Deviation (sigma)") +
-    theme_minimal()
+    scale_x_continuous(limits = c(-0, 20))+
+    scale_y_continuous(limits = c(-0, 8))+
+    theme_cowplot(12)
 
 results_summary_N <- data.frame(
     parameter = names(param_ranges),
@@ -388,14 +394,17 @@ results_summary_N <- data.frame(
     sigma = apply(m_N$ee, 2, sd)
 )
 
-ggplot(results_summary_N, aes(x = mu_star, y = sigma, label = parameter)) +
+g4<-ggplot(results_summary_N, aes(x = mu_star, y = sigma, label = parameter)) +
     geom_point() +
     geom_text(vjust = -0.5) +
-    labs(title = "Morris Sensitivity N (Benoit et al. Style)",
+    labs(title = "Morris Sensitivity N",
          x = "Mean Absolute Effect (mu*)",
          y = "Standard Deviation (sigma)") +
-    theme_minimal()
+    scale_x_continuous(limits = c(-0, 49))+
+    scale_y_continuous(limits = c(-0, 52))+
+    theme_cowplot(12)
 
+plot_grid(g1,g2,g3,g4, scale = 0.9)
 #check that all simulations ran to steady (including extinctions)
 for (i in 1:nrow(input_design)) {
     sim<-sensitivity_sim_list[[i]]
@@ -455,8 +464,8 @@ params<-readRDS("/Users/jessicawestworth/Desktop/Status Quo Starting Models/fina
 #RSA outputs
 RSA_sim_list<-list()
 RSA_outputs <- expand.grid(
-    c = c(10),
-    alpha = c(1),
+    c = c(0.1,0.2,0.3,0.4,1,10), #change based on the simulation you want to run
+    alpha = c(1),#change based on the simulation you want to run
     run = seq(n_runs),
     status_LFY_t = NA,
     BH_LFY_t = NA,
@@ -693,40 +702,10 @@ for(i in 1:n_runs) {
     }
 }
 
-#saveRDS(RSA_outputs, "/Users/jessicawestworth/Desktop/Sensitivity/RSA_outputs_c_10.rds")
-#saveRDS(RSA_sim_list, "/Users/jessicawestworth/Desktop/Sensitivity/RSA_sim_list_c_10.rds")
+#saveRDS(RSA_outputs, "/Users/jessicawestworth/Desktop/Sensitivity/RSA_outputs.rds")
+#saveRDS(RSA_sim_list, "/Users/jessicawestworth/Desktop/Sensitivity/RSA_sim_list.rds")
 
 
-RSA_outputs_0.1<-readRDS("/Users/jessicawestworth/Desktop/Sensitivity/RSA_outputs_c_0.1.rds")
-RSA_outputs_0.2<-readRDS("/Users/jessicawestworth/Desktop/Sensitivity/RSA_outputs_c_0.2.rds")
-RSA_outputs_0.3<-readRDS("/Users/jessicawestworth/Desktop/Sensitivity/RSA_outputs_c_0.3.rds")
-RSA_outputs_0.4<-readRDS("/Users/jessicawestworth/Desktop/Sensitivity/RSA_outputs_c_0.4.rds")
-RSA_outputs_1<-readRDS("/Users/jessicawestworth/Desktop/Sensitivity/RSA_outputs_c_1.rds")
-RSA_outputs_10<-readRDS("/Users/jessicawestworth/Desktop/Sensitivity/RSA_outputs_c_10.rds")
-RSA_outputs_0.4_0.5<-readRDS("/Users/jessicawestworth/Desktop/Sensitivity/RSA_outputs_c_0.4_a_0.5.rds")
-
-RSA_outputs_0.1$type<-"Whole_BH_0.1"
-RSA_outputs_0.2$type<-"Whole_BH_0.2"
-RSA_outputs_0.3$type<-"Whole_BH_0.3"
-RSA_outputs_0.4$type<-"Whole_BH_0.4"
-RSA_outputs_1$type<-"Whole_BH_1"
-RSA_outputs_10$type<-"Whole_BH_10"
-RSA_outputs_0.4_0.5$type<-"Hybrid_BH_0.4_0.5"
-RSA_outputs_status<-RSA_outputs_0.4_0.5
-RSA_outputs_status$BH_Y<-RSA_outputs_0.4_0.5$status_Y
-RSA_outputs_status$BH_B<-RSA_outputs_0.4_0.5$status_B
-RSA_outputs_status$BH_SSB<-RSA_outputs_0.4_0.5$staus_SSB
-RSA_outputs_status$BH_N<-RSA_outputs_0.4_0.5$status_N
-RSA_outputs_status$BH_LFY<-RSA_outputs_0.4_0.5$status_LFY
-RSA_outputs_status$BH_LFY_t<-RSA_outputs_0.4_0.5$status_LFY_t
-RSA_outputs_status$BH_LFB<-RSA_outputs_0.4_0.5$status_LFB
-RSA_outputs_status$BH_LFB_t<-RSA_outputs_0.4_0.5$status_LFB_t
-RSA_outputs_status$type<-"Status"
-RSA_outputs_status$c<-0
-RSA_outputs_status$alpha<-0
-
-
-RSA_outputs<-rbind(RSA_outputs_0.1, RSA_outputs_0.2,RSA_outputs_0.3,RSA_outputs_0.4,RSA_outputs_0.4_0.5, RSA_outputs_1,RSA_outputs_10,RSA_outputs_status)
 
 #library(ggplot2)
 #is it always the case that yields are higher for BH scenarios
@@ -832,31 +811,23 @@ sum(fr$BH_B_wins == FALSE, na.rm=TRUE)
 min(fr$B_dif) #-8.835737
 max(fr$B_dif) #8.594493
 mean(fr$B_dif) #0.9787319
-#43% of the time 0.4 c had worse B than status
+#43% of the time 0.2 c had worse B than status
 #should check the range of how much lower it went
 fr<-RSA_outputs%>%filter(type =="Whole_BH_0.1")
 sum(fr$BH_B_wins == FALSE, na.rm=TRUE)
 min(fr$B_dif) #-3.880961
 max(fr$B_dif) #14.1626
 mean(fr$B_dif) #5.375199
-#16% of the time 0.4 c had worse B than status
+#16% of the time 0.1 c had worse B than status
 #should check the range of how much lower it went
 fr<-RSA_outputs%>%filter(type =="Hybrid_BH_0.4_0.5")
 sum(fr$BH_B_wins == FALSE, na.rm=TRUE)
 min(fr$B_dif) #-11.14606
 max(fr$B_dif) #6.264971
 mean(fr$B_dif) #-0.9748913
-#60% of the time 0.4 c had worse B than status
+#60% had worse B than status
 #should check the range of how much lower it went
 
-RSA_outputs$BH_Y_wins<-RSA_outputs$BH_Y>RSA_outputs$status_Y
-
-ggplot(RSA_outputs, aes(x = status_Y, y = BH_Y)) +
-    geom_point(aes(color = type, shape = BH_Y_wins), alpha = 0.5) +
-    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-    labs(title = "Is Balanced Harvest Yield Robustly Higher?",
-         x = "Status Quo Yield", y = "Balanced Harvest Yield") +
-    theme_minimal()
 
 #SSB
 RSA_outputs$BH_SSB_wins<-RSA_outputs$BH_SSB>RSA_outputs$staus_SSB
@@ -952,35 +923,35 @@ sum(fr$BH_N_wins == FALSE, na.rm=TRUE)
 min(fr$N_dif) #-18.52049
 max(fr$N_dif) #94.99513
 mean(fr$N_dif) #20.14019
-#26% of the time 0.4 c had worse SSB than status
+#26%
 #should check the range of how much lower it went
 fr<-RSA_outputs%>%filter(type =="Whole_BH_0.3")
 sum(fr$BH_N_wins == FALSE, na.rm=TRUE)
 min(fr$N_dif) #-13.77172
 max(fr$N_dif) #93.29163
 mean(fr$N_dif) #22.54266
-#22% of the time 0.4 c had worse SSB than status
+#22%
 #should check the range of how much lower it went
 fr<-RSA_outputs%>%filter(type =="Whole_BH_0.2")
 sum(fr$BH_N_wins == FALSE, na.rm=TRUE)
 min(fr$N_dif) #-8.197448
 max(fr$N_dif) # 87.59062
 mean(fr$N_dif) #23.23397
-#14% of the time 0.4 c had worse SSB than status
+#14%
 #should check the range of how much lower it went
 fr<-RSA_outputs%>%filter(type =="Whole_BH_0.1")
 sum(fr$BH_N_wins == FALSE, na.rm=TRUE)
 min(fr$N_dif) # -2.297293
 max(fr$N_dif) # 67.17026
 mean(fr$N_dif) # 19.559
-#5% of the time 0.4 c had worse SSB than status
+#5%
 #should check the range of how much lower it went
 fr<-RSA_outputs%>%filter(type =="Hybrid_BH_0.4_0.5")
 sum(fr$BH_N_wins == FALSE, na.rm=TRUE)
 min(fr$N_dif) # -8.475009
 max(fr$N_dif) # 85.91678
 mean(fr$N_dif) # 22.04883
-#16% of the time 0.4 c had worse B than status
+#16%
 
 #LFY
 RSA_outputs$BH_LFY_wins<-RSA_outputs$BH_LFY>RSA_outputs$status_LFY
@@ -1156,7 +1127,33 @@ RSA_outputs_trial<-RSA_outputs%>%
            c_1_wins=case_when(type == "Whole_BH_1" & MCCS > max(MCCS[type != "Whole_BH_1"], na.rm = TRUE) ~ TRUE,
                                 TRUE ~ FALSE),
            c_10_wins=case_when(type == "Whole_BH_10" & MCCS > max(MCCS[type != "Whole_BH_10"], na.rm = TRUE) ~ TRUE,
-                                TRUE ~ FALSE))%>%
+                                TRUE ~ FALSE),
+           low_c_wins_Y=case_when(type == "Whole_BH_0.1" & BH_Y > BH_Y[type =="Whole_BH_1"] & BH_Y > BH_Y[type =="Whole_BH_10"]~TRUE,
+                                  type == "Whole_BH_0.2" & BH_Y > BH_Y[type =="Whole_BH_1"] & BH_Y > BH_Y[type =="Whole_BH_10"]~TRUE,
+                                  type == "Whole_BH_0.3" & BH_Y > BH_Y[type =="Whole_BH_1"] & BH_Y > BH_Y[type =="Whole_BH_10"]~TRUE,
+                                  type == "Whole_BH_0.4" & BH_Y > BH_Y[type =="Whole_BH_1"] & BH_Y > BH_Y[type =="Whole_BH_10"]~TRUE,
+                                  TRUE ~ FALSE),
+           low_c_wins_B=case_when(type == "Whole_BH_0.1" & BH_B > BH_B[type =="Whole_BH_1"] & BH_B > BH_B[type =="Whole_BH_10"]~TRUE,
+                                  type == "Whole_BH_0.2" & BH_B > BH_B[type =="Whole_BH_1"] & BH_B > BH_B[type =="Whole_BH_10"]~TRUE,
+                                  type == "Whole_BH_0.3" & BH_B > BH_B[type =="Whole_BH_1"] & BH_B > BH_B[type =="Whole_BH_10"]~TRUE,
+                                  type == "Whole_BH_0.4" & BH_B > BH_B[type =="Whole_BH_1"] & BH_B > BH_B[type =="Whole_BH_10"]~TRUE,
+                                  TRUE ~ FALSE),
+           low_c_wins_SSB=case_when(type == "Whole_BH_0.1" & BH_SSB > BH_SSB[type =="Whole_BH_1"] & BH_SSB > BH_SSB[type =="Whole_BH_10"]~TRUE,
+                                    type == "Whole_BH_0.2" & BH_SSB > BH_SSB[type =="Whole_BH_1"] & BH_SSB > BH_SSB[type =="Whole_BH_10"]~TRUE,
+                                    type == "Whole_BH_0.3" & BH_SSB > BH_SSB[type =="Whole_BH_1"] & BH_SSB > BH_SSB[type =="Whole_BH_10"]~TRUE,
+                                    type == "Whole_BH_0.4" & BH_SSB > BH_SSB[type =="Whole_BH_1"] & BH_SSB > BH_SSB[type =="Whole_BH_10"]~TRUE,
+                                  TRUE ~ FALSE),
+           low_c_wins_N=case_when(type == "Whole_BH_0.1" & BH_N > BH_N[type =="Whole_BH_1"]& BH_N > BH_N[type =="Whole_BH_10"]~TRUE ,
+                                  type == "Whole_BH_0.2" & BH_N > BH_N[type =="Whole_BH_1"] & BH_N > BH_N[type =="Whole_BH_10"]~TRUE,
+                                  type == "Whole_BH_0.3" & BH_N > BH_N[type =="Whole_BH_1"] & BH_N > BH_N[type =="Whole_BH_10"]~TRUE,
+                                  type == "Whole_BH_0.4" & BH_N > BH_N[type =="Whole_BH_1"] & BH_N > BH_N[type =="Whole_BH_10"]~TRUE,
+                                  TRUE ~ FALSE),
+           low_c_wins_BLFS=case_when(type == "Whole_BH_0.1" & BH_LFB_t > BH_LFB_t[type =="Whole_BH_1"] & BH_LFB_t > BH_LFB_t[type =="Whole_BH_10"]~TRUE,
+                                     type == "Whole_BH_0.2" & BH_LFB_t > BH_LFB_t[type =="Whole_BH_1"] & BH_LFB_t > BH_LFB_t[type =="Whole_BH_10"]~TRUE,
+                                     type == "Whole_BH_0.3" & BH_LFB_t > BH_LFB_t[type =="Whole_BH_1"] & BH_LFB_t > BH_LFB_t[type =="Whole_BH_10"]~TRUE,
+                                     type == "Whole_BH_0.4" & BH_LFB_t > BH_LFB_t[type =="Whole_BH_1"] & BH_LFB_t > BH_LFB_t[type =="Whole_BH_10"]~TRUE,
+                                     TRUE ~ FALSE)
+           )%>%
         ungroup()
 
 ggplot(RSA_outputs_trial, aes(x = type, y = MCCS)) +
@@ -1250,3 +1247,98 @@ sum(RSA_outputs_trial_1$beat_status == FALSE, na.rm = TRUE)
 RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type== "Whole_BH_10")
 sum(RSA_outputs_trial_1$beat_status == FALSE, na.rm = TRUE)
 #100% of the time is worse
+
+
+
+
+#Relation between whole BH and fishing intensities
+#Do N, B, SSB, and Yield all decrease at fishing intensities above 0.4
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.1")
+sum(RSA_outputs_trial_1$low_c_wins_Y == FALSE, na.rm = TRUE)
+#97% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.2")
+sum(RSA_outputs_trial_1$low_c_wins_Y == FALSE, na.rm = TRUE)
+#41% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.3")
+sum(RSA_outputs_trial_1$low_c_wins_Y == FALSE, na.rm = TRUE)
+#9% of times is lower than both c=1 and c=10
+
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.4")
+sum(RSA_outputs_trial_1$low_c_wins_Y == FALSE, na.rm = TRUE)
+#1% of times is lower than both c=1 and c=10
+
+#low_c_wins_B
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.1")
+sum(RSA_outputs_trial_1$low_c_wins_B == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.2")
+sum(RSA_outputs_trial_1$low_c_wins_B == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.3")
+sum(RSA_outputs_trial_1$low_c_wins_B == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.4")
+sum(RSA_outputs_trial_1$low_c_wins_B == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+#low_c_wins_SSB
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.1")
+sum(RSA_outputs_trial_1$low_c_wins_SSB == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.2")
+sum(RSA_outputs_trial_1$low_c_wins_SSB == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.3")
+sum(RSA_outputs_trial_1$low_c_wins_SSB == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.4")
+sum(RSA_outputs_trial_1$low_c_wins_SSB == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+#low_c_wins_N
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.1")
+sum(RSA_outputs_trial_1$low_c_wins_N == FALSE, na.rm = TRUE)
+#10% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.2")
+sum(RSA_outputs_trial_1$low_c_wins_N == FALSE, na.rm = TRUE)
+#2% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.3")
+sum(RSA_outputs_trial_1$low_c_wins_N == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.4")
+sum(RSA_outputs_trial_1$low_c_wins_N == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+#low_c_wins_BLFS
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.1")
+sum(RSA_outputs_trial_1$low_c_wins_BLFS == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.2")
+sum(RSA_outputs_trial_1$low_c_wins_BLFS == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.3")
+sum(RSA_outputs_trial_1$low_c_wins_BLFS == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
+
+
+RSA_outputs_trial_1<-RSA_outputs_trial%>%filter(type=="Whole_BH_0.4")
+sum(RSA_outputs_trial_1$low_c_wins_BLFS == FALSE, na.rm = TRUE)
+#0% of times is lower than both c=1 and c=10
