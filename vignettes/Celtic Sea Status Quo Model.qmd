@@ -1,0 +1,279 @@
+---
+title: "Celtic_Sea_Status_Quo_Model"
+author: "Jessica Westworth"
+format: pdf
+editor: visual
+---
+
+# Introduction
+
+Creating a model representing the average state of the Celtic Sea from 2012 to 2024. Composed of 14 species: herring (*Clupea harengus*), cod (*Gadus morhua*), haddock (*Melanogrammus aeglefinus*), whiting (*Merlangius merlangus*), blue whiting (*Micromesistius poutassou*), hake (*Merluccius merluccius*), monkfish (Lophius piscatorius), horse mackerel (*Trachurus trachurus*), mackerel (*Scomber scombrus*), plaice (*Pleuronectes platessa*), megrim (*Lepidorhombus whiffiagonis*), sole (*Solea solea*), boarfish (*Capros aper*), and red gurnard (Chelidonicthys cuculus).
+
+## Loading in Repository and Libraries
+
+```{r}
+#| warning: false
+#| message: false
+#| results: 'hide'
+
+library(mizer)
+library(mizerEcopath)
+library(dplyr)
+library(here)
+```
+
+## Load in Data
+
+Data includes: life_history parameters (l_mat and age_mat calculated from DATRAS data; w_max and LWR from Fishbase); landing distributions form STECF; survey size distribution and age at length distribution data from DATRAS; Stomach contents data; Biomass estimates, yield estimates, interaction matrix, and diet matrix from Lauria (2016).
+
+```{r}
+#| warning: false
+#| message: false
+#| results: 'hide'
+
+#Load life history data
+data(life_histories)
+
+#Load in ecopath data
+data(ecopath_params)
+
+#Diet matrix
+data(diet)
+
+#Deaths from fishing
+data(fishing_death)
+
+#Catch Distribution
+data(catch_distributions)
+
+#DATRAS size distribution
+data(survey_length_distributions)
+
+#DATRAS age at length distribution
+data(cs_age_size)
+boar<-readRDS("/Users/jessicawestworth/Desktop/boarfish_struct_like_DATRAS.rds")
+cs_age_size<-rbind(cs_age_size,boar)
+
+#determining l_max comparing landings max length versus fishbase max length recorded value
+observed_max <- catch_distributions %>%
+     group_by(species) %>%
+     summarise(
+         obs_len = if (all(is.na(length + dl))) NA_real_ else max(length + dl, na.rm = TRUE)
+     )
+life_histories <- life_histories %>%
+    left_join(observed_max, by = "species")%>%
+    mutate(
+        l_max = pmax(obs_len, l_max))%>%
+    select(-obs_len)
+
+#combined survey fishing and STECF fishing
+all_fishing<-rbind(catch_distributions,survey_length_distributions)
+```
+
+## Species Parameters
+
+Assign species parameters from life history data
+
+```{r}
+#calculate w_mat and w_max and set n,p,d, and alpha parameter
+sp_params<-life_histories%>%
+    mutate(w_mat=a*l_mat^b,
+           w_max=a*l_max^b,
+           n=0.7,
+           p=0.7,
+           d=-0.3,
+           alpha=0.7,
+           biomass_cutoff=w_mat)
+
+species_to_groups <- list(
+    Herring          = "Herring",
+    Cod              = c("Cod", "Juvenile cod"),
+    Haddock          = c("Haddock","Juvenile haddock"),
+    Whiting          = c("Whiting","Juvenile whiting"),
+    `Blue whiting`   = c("Blue whiting","Juvenile blue whiting"),
+    Hake             = c("Hake","Juvenile hake"),
+    Monkfish         = c("Monkfish","Juvenile monkfish"),
+    `Horse mackerel` = "Horse mackerel",
+    Mackerel         = "Mackerel",
+    Plaice           = c("Plaice","Juvenile plaice"),
+    Megrim           = c("Megrim","Juvenile megrim"),
+    Sole             = "Sole",
+    Boarfish         = "Boarfish",
+    `Red gurnard`      = "Red gurnard"
+)
+
+sp <- sp_params
+sp <- addEcopathParams(sp, ecopath_params, species_to_groups)
+
+adult_map <- tibble::tibble(
+  species      = names(species_to_groups),
+  adult_stanza = vapply(species_to_groups, function(x) x[[1]], character(1))
+)
+
+adult_biomass <- ecopath_params %>%
+  group_by(Group.name) %>%
+  summarise(
+    biomass_observed = sum(Biomass..t.km.2., na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  rename(adult_stanza = Group.name)
+
+sp <- sp %>%
+  select(-any_of("biomass_observed")) %>%  # drop if present from a previous run
+  left_join(adult_map, by = "species") %>%
+  left_join(adult_biomass, by = "adult_stanza") %>%
+  mutate(
+    biomass_observed = coalesce(biomass_observed, 0),
+    biomass_cutoff   = w_mat
+  ) %>%
+  select(-adult_stanza)
+
+sp$biomass_cutoff[c(1,8,9,12,13,14)]<-1
+
+sp<-sp[c(5,13,2,3,6,1,8,9,11,7,10,14,12,4),]
+```
+
+## Build Non-Interacting Model
+
+```{r}
+model_non_int <- newAllometricParams(sp, no_w = 200)
+
+## Add gear params
+model_non_int <- addCatch(model_non_int, landings= catch_distributions,
+                              fishing_dead_biomass=fishing_death,
+                              survey= survey_length_distributions,step=2)
+
+# Steady model
+model_non_int <- model_non_int %>%
+    steadySingleSpecies() %>%
+    matchBiomasses() %>%
+    steadySingleSpecies() %>%
+    matchBiomasses()%>%
+    steadySingleSpecies() %>%
+    matchBiomasses()%>%
+    steadySingleSpecies() %>%
+    matchBiomasses()%>%
+    steadySingleSpecies() %>%
+    matchBiomasses()
+
+params<-model_non_int
+sps<-species_params(model_non_int)
+initial_Eiw<-array(dim=length(sps$species))
+for(i in 1:length(sps$species)){
+    initial_Eiw[i]<-getExtEncounter(params)[i,1]/(w(params)[1]^sp[i,]$n)}
+sps$Eiw<-initial_Eiw
+species_params(model_non_int)<-sps
+
+#set the spawning time, spawning concentration to literature values.
+spawning_mort<-tuneEcopath(
+    model_non_int, 
+    catch = all_fishing,
+    age_at_length = cs_age_size)
+
+#saveRDS(spawning_mort,"/Users/jessicawestworth/Desktop/spawning_mort.rds")
+```
+
+# Add Diets and Predation Kernel
+
+```{r}
+#| eval: false
+# Stomach-fit parameters (keep separate; align by scientific name), cannot do right now because the new species are not in the processed file right now so... yeah...
+data(stomach_data_fit)
+stf<-stomach_data_fit
+sp  <- species_params(spawning_mort)
+idx <- match(sp$Scientific_name, stf$species)  # align order to species_params
+
+lambda <- 2
+sp$pred_kernel_type <- "power_law"
+sp$kernel_exp <- stf$alpha[idx] + 4/3 - lambda
+sp$kernel_l_l <- stf$ll[idx]
+sp$kernel_u_l <- stf$ul[idx]
+sp$kernel_l_r <- stf$lr[idx]
+sp$kernel_u_r <- stf$ur[idx]
+
+species_params(spawning_mort) <- sp
+
+#Adjust diet matrix for integration into model using reduceEcopathDiet
+dm<-reduceEcopathDiet(
+    species_params = species_params(spawning_mort),
+    ecopath_diet   = diet,
+    ecopath_params = ecopath_params
+)
+```
+
+# Continuous Re-tuning
+
+```{r}
+#| eval: false
+p<-spawning_mort
+
+#Tune model in the tuning app
+non_int_tuned_model<-tuneEcopath(
+    p, 
+    catch = all_fishing,
+    age_at_length = cs_age_size,
+    diet = dm)
+
+#Set Diffusion matrix as tuned app does not save into the model currently
+non_int_tuned_model<-setDiffusion(non_int_tuned_model)
+
+#Retrieve tuned model
+data(non_int_tuned_model)
+```
+
+# Prepare Model for Projection
+
+```{r}
+#| eval: false
+#ensure model is in a steady state
+s<-mizer::steadySingleSpecies(non_int_tuned_model)
+#set the feeding levels
+g<-setFeedingLevels(params=s, f=0.6, f_c=0.2)
+#ensure model is in a steady state
+f<-mizer::steadySingleSpecies(g)
+
+params <- f
+dm <- dm
+params <- validParams(params)
+
+resource_params(params)$w_pp_cutoff <- 1
+
+ps <- params |>
+    mizer::steadySingleSpecies() |>
+    alignResource() |>
+    setResourceInteraction(resource_dynamics = "resource_semichemostat") |>
+    matchDiet(dm) |>
+    setBevertonHolt(reproduction_level = 0.8)
+
+status_quo_interacting_model<-ps
+
+#Retrieve previously tuned interacting model
+data(status_quo_interacting_model)
+```
+
+# BH Model Projection Example
+
+```{r}
+#| eval: false
+# Initialize the blender
+# Let's say we want to transition over 20 years with a harvest intensity of 0.15, but then we want to keep fishing at BH till true steady state is reached.
+t_duration <-350
+og_sim_steady_in<-100
+t_blend <- 200
+c_intensity <- 0
+
+my_blender <- make_blended_ssBH_FMort(t_max_blend = t_blend, 
+                                      target_c = c_intensity,
+                                      t_steady = og_sim_steady_in,
+                                      alpha_max = 0.2)
+
+# Inject function into params
+sim_BH_start<- setRateFunction(ps, "FMort", "my_blender")
+
+# Run the simulation
+# Use effort = 1; the blender handles the internal weights
+sim_BH_4 <- project(sim_BH_start, t_max = t_duration, effort = 1)
+
+#plotBiomasses overtime
+plotlyBiomass(sim_BH_4)
+```
