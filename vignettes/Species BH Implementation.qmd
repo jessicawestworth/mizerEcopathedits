@@ -246,13 +246,7 @@ plotSpectra2(sim_BH_1_allometric,sim_BH_2_allometric)
 
 ## Projections Comparing the Methods
 
-First we will observe the projections of 120 years with 10 years of steady state projection, and 10 years of blending and 100 years with the alpha value derived from the production biomass relationship of the respective params object. $Y=cP^{\gamma}$ where the fishing mortality is given as: $F=\frac{cP^{y}}{B}$.
-
-First we will assess the c and $\gamma$ value of the equation above which approximates the status quo:
-
-For the vB model c = 0.099 and $\gamma$=0.440
-
-For the allometric model c = 0.096 and $\gamma$ = 0.438
+First we will observe the projections of 120 years with 10 years of steady state projection, and 10 years of blending and 100 years with the alpha value derived from the production biomass relationship of the respective params object. $Y=cP^{\gamma}$ where the fishing mortality is given as: $F=c\frac{P^{\gamma}}{B}$.
 
 ```{r}
 plot_LogY_LogP(params_vB)
