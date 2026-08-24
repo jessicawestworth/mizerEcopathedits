@@ -14,6 +14,35 @@
 #Selectivity should stay the same but the logP-log Y relationship should change dynamically
 
 
+#' Parse the `log` argument of a time-series plot
+#'
+#' Mirrors the `log` argument of base [graphics::plot()]: a string naming the
+#' axes to put on a log10 scale, e.g. `"x"`, `"y"`, `"xy"` or `""`. When
+#' supplied it overrides `log_x` and `log_y`.
+#'
+#' This reimplements a helper that older versions of mizer provided internally
+#' as `parseTimePlotLog()` but which is not present in mizer 3.3.0.
+#'
+#' @param log Character string, or NULL to use `log_x`/`log_y`.
+#' @param log_x,log_y Logical fallbacks used when `log` is NULL.
+#' @return A list with logical elements `log_x` and `log_y`.
+#' @noRd
+parse_time_plot_log <- function(log = NULL, log_x = FALSE, log_y = FALSE) {
+    if (is.null(log)) {
+        return(list(log_x = log_x, log_y = log_y))
+    }
+    if (!is.character(log) || base::length(log) != 1) {
+        stop("'log' must be a single character string such as \"x\", \"y\", ",
+             "\"xy\" or \"\".")
+    }
+    chars <- strsplit(log, "")[[1]]
+    if (!all(chars %in% c("x", "y"))) {
+        stop("'log' may only contain the characters \"x\" and \"y\", but was ",
+             deparse(log), ".")
+    }
+    list(log_x = "x" %in% chars, log_y = "y" %in% chars)
+}
+
 #' Plot log10(Biomass) vs log10(Production) Slope Over Time
 #'
 #' @export
@@ -143,7 +172,7 @@ plotProduction.MizerSim <- function(object, sim2 = NULL,
                                     highlight = NULL, return_data = FALSE,
                                     size = NULL, length = NULL,
                                     ...) {
-    log_axes <- mizer:::parseTimePlotLog(log, log_x = log_x, log_y = log_y)
+    log_axes <- parse_time_plot_log(log, log_x = log_x, log_y = log_y)
 
     assert_that(is(object, "MizerSim"),
                 is.flag(total),
@@ -254,12 +283,47 @@ plotProduction.MizerSim <- function(object, sim2 = NULL,
 }
 
 
+#' Plot fishing mortality
+#'
+#' Generic version of [mizer::plotFMort()]. The `MizerSim` method plots a
+#' summary of the fishing mortality over time, which mizer's function does not
+#' provide. Every other class, in particular `MizerParams`, is passed straight
+#' through to [mizer::plotFMort()], so that attaching this package does not
+#' change the behaviour of `plotFMort()` for existing code.
+#'
+#' @param object A `MizerSim` or `MizerParams` object.
+#' @param sim2 Optional second `MizerSim` object to compare.
+#' @param species Species to include. Defaults to all valid species.
+#' @param total Logical. If TRUE, includes the total across species.
+#' @param log_x,log_y Logical. Use log scales on the x and y axes?
+#' @param log Character. Legacy log setting string, as in base `plot()`.
+#' @param ylim Numeric vector of length 2 for y-axis limits.
+#' @param tlim Numeric vector of length 2 for time limits.
+#' @param highlight Species name to highlight.
+#' @param return_data Logical. If TRUE, returns the data frame instead of a plot.
+#' @param summary_fn Function used to reduce fishing mortality over sizes to one
+#'   value per species and time. Defaults to `max`.
+#' @param ... Additional arguments passed on to the method.
+#'
+#' @return A ggplot2 object, or a data frame if `return_data = TRUE`.
 #' @export
 plotFMort <- function(object, sim2 = NULL, species = NULL, total = FALSE,
                       log_x = FALSE, log_y = FALSE, log = NULL,
                       ylim = c(NA, NA), tlim = c(NA, NA), highlight = NULL,
                       return_data = FALSE, summary_fn = max, ...) {
     UseMethod("plotFMort")
+}
+
+#' @rdname plotFMort
+#' @usage NULL
+#' @export
+plotFMort.default <- function(object, sim2 = NULL, species = NULL, total = FALSE,
+                              log_x = FALSE, log_y = FALSE, log = NULL,
+                              ylim = c(NA, NA), tlim = c(NA, NA),
+                              highlight = NULL, return_data = FALSE,
+                              summary_fn = max, ...) {
+    mizer::plotFMort(object, species = species, return_data = return_data,
+                     highlight = highlight, ...)
 }
 
 #' @rdname plotFMort
@@ -273,7 +337,7 @@ plotFMort.MizerSim <- function(object, sim2 = NULL,
                                highlight = NULL, return_data = FALSE,
                                summary_fn = max,
                                ...) {
-    log_axes <- mizer:::parseTimePlotLog(log, log_x = log_x, log_y = log_y)
+    log_axes <- parse_time_plot_log(log, log_x = log_x, log_y = log_y)
 
     assert_that(is(object, "MizerSim"),
                 is.flag(total),
@@ -410,21 +474,38 @@ precompute_cutoff <- function(object, size = NULL, length = NULL,...) {
     # Initialize weight vector
     weight <- numeric(no_sp)
 
-    # Give the w of the supplied length value
-    if (!is.null(size) && size == "length") {
+    # Helper: recycle a length-1 or length-no_sp vector to one value per species
+    recycle_to_species <- function(x, what) {
+        n <- base::length(x)
+        if (n == 1) return(rep(x, no_sp))
+        if (n == no_sp) return(x)
+        stop("'", what, "' must have length 1 or match the number of species (",
+             no_sp, "), but has length ", n, ".")
+    }
+
+    if (!is.null(size) && is.numeric(size)) {
+        # Cutoff supplied directly as a weight in grams
+        if (!is.null(length)) {
+            stop("Supply either 'size' (weights in g) or 'length' (cm), not both.")
+        }
+        weight <- recycle_to_species(size, "size")
+
+    } else if (!is.null(length) ||
+               (!is.null(size) && identical(as.character(size), "length"))) {
+        # Cutoff supplied as a length in cm; convert with the length-weight relation
+        if (!is.null(size) && !identical(as.character(size), "length")) {
+            stop("'size' must be numeric weights or the string \"length\", not ",
+                 deparse(size), ".")
+        }
         if (is.null(length)) {
-            stop("The 'length' argument must be provided when size == 'length'.")
+            stop("The 'length' argument must be provided when size == \"length\".")
         }
-
-        if (length(length) == 1) {
-            cm <- rep(length, no_sp)
-        } else if (length(length) == no_sp) {
-            cm <- length
-        } else {
-            stop("Length vector must have length 1 or match the number of species.")
-        }
-
+        cm <- recycle_to_species(length, "length")
         weight <- sp_params$a * (cm ^ sp_params$b)
+
+    } else if (!is.null(size)) {
+        stop("'size' must be numeric weights in g or the string \"length\", not ",
+             deparse(size), ".")
 
     } else {
         # Precompute weight per species using gear parameters
@@ -714,13 +795,29 @@ plot_LogB_LogP.MizerSim <- function(object, size = NULL, length = NULL, ...) {
 #'Function that will compute the Biomass Production slope relationship
 #'may be used in future for detecting changes in this relationship as the
 #'fishing mortality is adjusted
+#'
+#' The fit is \eqn{\log B = \log k + \alpha \log P} on natural logs, so the
+#' returned `slope` is \eqn{\alpha} and the fitted proportionality constant is
+#' \eqn{k = \exp(\mathrm{intercept})}. Note that \eqn{k} is *not* the harvest
+#' rule constant \eqn{c}: see the "Species Level Balanced Harvest
+#' Implementation" vignette.
+#'
+#' @return A list with the fitted `model`, its `intercept` and `slope`, and the
+#'   per-species `data` the fit was made from.
 #' @export
 compute_LogP_LogB_slope<-function(params, size=NULL, length=NULL, n=initialN(params), n_pp=initialNResource(params), n_other=initialNOther(params)){
-    result<-Compute_Yield_Biomass_Production(params, size=size, length=length,n=n,n_pp=n_pp,n_other=n_other)
-    model<-lm(log(result$Biomass)~log(result$Production))
-    intercept<-coef(model)[1]
-    slope<-coef(model)[2]
+    result <- Compute_Yield_Biomass_Production(params, size = size, length = length,
+                                               n = n, n_pp = n_pp, n_other = n_other)
+    valid <- result$Biomass > 0 & result$Production > 0
+    if (sum(valid) < 2) {
+        stop("Need at least two species with positive biomass and production ",
+             "above the size cutoff to fit a slope.")
+    }
+    model <- lm(log(Biomass) ~ log(Production), data = result[valid, ])
     list(
-        model = model
+        model = model,
+        intercept = unname(coef(model)[1]),
+        slope = unname(coef(model)[2]),
+        data = result
     )
 }

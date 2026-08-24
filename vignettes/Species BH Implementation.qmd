@@ -11,6 +11,11 @@ editor: visual
 library(here)
 library(mizerEcopath)
 library(cowplot)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, cache = TRUE)
+
+# Yield in the final saved year. Rows of getYield() run t = 0 ... t_max, so the
+# last row is idxFinalT(), not row t_max.
+final_yield <- function(sim) getYield(sim)[idxFinalT(sim), ]
 ```
 
 ## Balanced Harvest Definition
@@ -21,15 +26,15 @@ $Y_i=c_PP_iB_i$ or $F_i=c_PP_i$
 
 where:
 
--   $Y_i$ = Yield of species $i$ ($tonnes/km^2/year$)
+- $Y_i$ = Yield of species $i$ ($tonnes/km^2/year$)
 
--   $P_i$ = Production of species $i$ ($tonnes/km^2/year$)
+- $P_i$ = Production of species $i$ ($tonnes/km^2/year$)
 
--   $B_i$ = Biomass of species $i$ ($tonnes/km^2$)
+- $B_i$ = Biomass of species $i$ ($tonnes/km^2$)
 
--   $F_i$ = Fishing Mortality Rate of species $i$ ($1/year$)
+- $F_i$ = Fishing Mortality Rate of species $i$ ($1/year$)
 
--   $c_P$ = Proportionality Constant ($km^2/tonnes$)
+- $c_P$ = Proportionality Constant ($km^2/tonnes$)
 
 The fixed exploitation ratio ($BH_{P/B}$) is defined by the harvest rule:
 
@@ -37,33 +42,45 @@ $Y_i=c_{P/B}P_i$ or $F_i=c_{P/B}p_i$
 
 where:
 
--   $Y_i$ = Yield of species $i$ ($tonnes/km^2/year$)
+- $Y_i$ = Yield of species $i$ ($tonnes/km^2/year$)
 
--   $P_i$ = Production of species $i$ ($tonnes/km^2/year$)
+- $P_i$ = Production of species $i$ ($tonnes/km^2/year$)
 
--   $p_i$ = Productivity of species $i$ ($1/year$)
+- $p_i$ = Productivity of species $i$ ($1/year$)
 
--   $B_i$ = Biomass of species $i$ ($tonnes/km^2$)
+- $B_i$ = Biomass of species $i$ ($tonnes/km^2$)
 
--   $F_i$ = Fishing Mortality Rate of species $i$ ($1/year$)
+- $F_i$ = Fishing Mortality Rate of species $i$ ($1/year$)
 
--   $c_{P/B}$ = Proportionality Constant (unitless)
+- $c_{P/B}$ = Proportionality Constant (unitless)
+
+### A note on notation
+
+The symbol $\alpha$ is used below for the exponent of the biomass-production relationship. It is unrelated to the `alpha_max` argument of the blending functions, which controls how far the simulation has moved from status-quo fishing towards the new rule. To keep the two apart, the harvest exponent is called `gamma` in all code.
 
 ## Varying Density-Dependence: Biomass and Production Relationship
 
-Biomass and Production are assumed to have the relationship where $B=P^{\alpha}$, this means that the balanced harvest rule can be rewritten as:
+Across species, biomass and production are empirically related by $B=kP^{\alpha}$, so the balanced harvest rule can be rewritten as:
 
-$Y=cP^{1+\alpha}$
+$Y=c_PP\,B = c_Pk\,P^{1+\alpha}$
 
-In the log form this means that ($1+\alpha$) is the slope of the log yield, log production relationship:
+In log form, $(1+\alpha)$ is the slope of the log yield, log production relationship:
 
-$log(Y)=log(c)+(1+\alpha)log(P)$
+$\log(Y)=\log(c_Pk)+(1+\alpha)\log(P)$
 
-We can represent $(1+\alpha)$ as $\gamma$ which represents the slope of the log(Y) log(P) relationship.
+We write $\gamma=1+\alpha$ for that slope, giving the general power-law rule
 
-The fixed exploitation ratio is that where alpha is equal to 0, and balanced harvest is that where alpha is equal to the the logBiomass-logProduction relationship (alpha \~ 0.8). Where c has the units $(t /km^2 /yr)^{-\alpha}$.
+$$Y_i = c\,P_i^{\gamma}, \qquad F_i = c\,\frac{P_i^{\gamma}}{B_i}.$$
 
-By increasing alpha from 0 towards 0.8 we can project harvest rules that have varying levels of density dependence. We can also look at what the status quo slope and proportionality constant are.
+The fixed exploitation ratio is $\gamma=1$ (equivalently $\alpha=0$), and balanced harvest corresponds to $\gamma=1+\alpha$ with $\alpha$ taken from the fitted log-biomass-log-production relationship. By increasing $\gamma$ from $1$ towards $1+\alpha$ we can project harvest rules with varying levels of density dependence.
+
+### Three caveats on this reformulation
+
+**The fitted constant** $k$ is absorbed into $c$. Writing the rule as $Y=cP^{\gamma}$ hides the intercept of the $B$-$P$ fit inside $c$. This means $c$ is not comparable across models, or across values of $\gamma$ within a model, and it has $\gamma$-dependent units. Every $c$ used below is therefore calibrated separately, from the status-quo yield, rather than chosen by hand.
+
+$\gamma$ is a choice of rule, not a property of the ecosystem. The identity $\gamma=1+\alpha$ only says which power-law rule *coincides with* balanced harvest. Once a rule is applied, the community re-equilibrates and the realised $B$-$P$ relationship changes, so the fitted $\alpha$ is a property of the reference state, not an invariant. The projections below show how far it moves.
+
+**`make_blended_P_y` and `make_blended_sBH_FMort` are not the same rule.** `make_blended_sBH_FMort` applies $F_i=c_PP_i$ directly. `make_blended_P_y` applies $F_i=cP_i^{\gamma}/B_i$ using the *dynamic* biomass at each time step. Substituting the fitted $B=kP^{\alpha}$ shows they agree when $\gamma=1+\alpha$ **at the reference state only**. Away from it they diverge, and the size of that divergence is exactly the drift in $\alpha$ shown below. They should be read as two related but distinct rules, not two implementations of one.
 
 ## Testing the Biomass-Production Relationship with mizer
 
@@ -73,64 +90,76 @@ The Biomass-Production relationship will be tested on the two models created by 
 
 2\) the allometric model
 
-```{r}
-#| warning: false
-#| message: false
-params_vB<-readRDS(here("inst/params_vB_final_Richard_and_Jess.rds"))
-params_allometric<-readRDS(here("inst/params_allometric_final_Richard_and_Jess.rds"))
-
-plot_LogB_LogP(params_vB)
-
-plot_LogB_LogP(params_allometric)
-```
-
-The alpha value for the vB model is 0.888 and 0.75 for the allometric model.
-
-The models are projected 100 years forward with removed fishing effort to see if this relationship changes overtime.
-
-vonBertalanffy model: The slope of the logbiomass-logproduction relationship varies overtime by \~0.158
+All quantities below are integrated over individuals larger than 20 cm, chosen for trawl survey reliability. This cutoff is passed explicitly to every function; note that the default cutoff used by `precompute_cutoff()` when none is supplied is instead the catchability-weighted `l50` of the gears, which for cod and hake in these models is around 55-58 cm and gives noticeably different results.
 
 ```{r}
-#| warning: false
-#| message: false
-projection_vB<-project(params_vB, effort=0)
-plotBiomassProductionSlope(projection_vB)
-```
+params_vB <- readRDS(here("inst/params_vB_final_Richard_and_Jess.rds"))
+params_allometric <- readRDS(here("inst/params_allometric_final_Richard_and_Jess.rds"))
 
-Allometric model: The slope of the logbiomass-logproduction relationship varies overtime by \~0.310
+# Size cutoff used throughout, in cm
+l_cut <- 20
+
+plot_LogB_LogP(params_vB, size = "length", length = l_cut)
+
+plot_LogB_LogP(params_allometric, size = "length", length = l_cut)
+```
 
 ```{r}
-#| warning: false
-#| message: false
-projection_allometric<-project(params_allometric, effort=0)
-plotBiomassProductionSlope(projection_allometric)
+alpha_vB <- compute_LogP_LogB_slope(params_vB, size = "length", length = l_cut)$slope
+alpha_allo <- compute_LogP_LogB_slope(params_allometric, size = "length", length = l_cut)$slope
 ```
+
+The $\alpha$ value is `r round(alpha_vB, 3)` for the vB model and `r round(alpha_allo, 3)` for the allometric model, giving harvest exponents of $\gamma=`r round(1 + alpha_vB, 3)`$ and $\gamma=`r round(1 + alpha_allo, 3)`$ respectively.
+
+The models are projected 100 years forward with removed fishing effort to see if this relationship changes over time.
+
+```{r}
+projection_vB <- project(params_vB, effort = 0)
+slope_vB <- plotBiomassProductionSlope(projection_vB, size = "length",
+                                       length = l_cut, return_data = TRUE)
+plotBiomassProductionSlope(projection_vB, size = "length", length = l_cut)
+```
+
+vonBertalanffy model: the slope of the log-biomass-log-production relationship varies over time by `r round(diff(range(slope_vB$Slope, na.rm = TRUE)), 3)`.
+
+```{r}
+projection_allometric <- project(params_allometric, effort = 0)
+slope_allo <- plotBiomassProductionSlope(projection_allometric, size = "length",
+                                         length = l_cut, return_data = TRUE)
+plotBiomassProductionSlope(projection_allometric, size = "length", length = l_cut)
+```
+
+Allometric model: the slope varies over time by `r round(diff(range(slope_allo$Slope, na.rm = TRUE)), 3)`.
+
+This drift is the practical measure of the second and third caveats above: it is how far the reference-state fit, and therefore the equivalence between the two rules, has moved by the end of the projection.
 
 ## Equations for the given variables
 
-$P_i=\int_{w_{20}=a20^b}^{w_{max}}{N_i(w)G_i(w)dw}$
+With $w_{c}=a\,l_{c}^{\,b}$ the weight corresponding to the cutoff length $l_c$:
 
-$B_i=\int_{w_{20}=a20^b}^{w_{max}}{N_i(w)wdw}$
+$P_i=\int_{w_{c}}^{w_{max}}{N_i(w)G_i(w)dw}$
 
-$Y_i=\int_{w_{20}=a20^b}^{w_{max}}{F_i(w)N_i(w)wdw}$
+$B_i=\int_{w_{c}}^{w_{max}}{N_i(w)wdw}$
+
+$Y_i=\int_{w_{c}}^{w_{max}}{F_i(w)N_i(w)wdw}$
 
 Harvest Rule Fishing Mortality:
 
-$F_{i,BH}=c*\int_{w_{20}=a20^b}^{w_{max}}{N_i(w)G_i(w)dw}*(\int_{w_{20}=a20^b}^{w_{max}}{N_i(w)wdw})^{x-1}$
+$F_{i}=c*\left(\int_{w_{c}}^{w_{max}}{N_i(w)G_i(w)dw}\right)^{\gamma}*\left(\int_{w_{c}}^{w_{max}}{N_i(w)wdw}\right)^{-1}$
 
 where:
 
--   $a$ = coefficient length weight ratio
+- $a$ = coefficient length weight ratio
 
--   $b$ = exponent of length weight ratio
+- $b$ = exponent of length weight ratio
 
--   $N_i(w)$ = number density
+- $N_i(w)$ = number density
 
--   $G_i(w)$ = growth
+- $G_i(w)$ = somatic growth rate, from `getEGrowth()`
 
--   $w$ = weight
+- $w$ = weight
 
-Cutoffs are set to 20 cm, this value can be changed to represent the l_50 if sigmoidal gears are selected.
+$P_i$ here is somatic production only. Above a cutoff of 20 cm this is the same as the Ecopath production returned by `getProduction()`, because the other component of that quantity — offspring biomass — enters the spectrum at `w_min` (0.001 g), far below the cutoff.
 
 ## Implementing Size-level Fishing Mortality from Species Level Balanced Harvest Fishing Mortality
 
@@ -144,19 +173,19 @@ $F_{i}(w)=\sum_g(S_{i,g}(w)Q_{i,g}E_g)$
 
 where:
 
--   $S_{i,g}(w)$: Selectivity of species $i$ and gear $g$ ranges from 0-1, generally sigmoidal selectivity
+- $S_{i,g}(w)$: Selectivity of species $i$ and gear $g$ ranges from 0-1, generally sigmoidal selectivity
 
--   $Q_{i,g}$: Catchability of species $i$ and gear $g$
+- $Q_{i,g}$: Catchability of species $i$ and gear $g$
 
--   $E_g$: Effort of gear $g$
+- $E_g$: Effort of gear $g$
 
-To scale the species-level BH fishing mortality calculated above to a size specific mortalities for each species I suggest 2 potential options:
+To scale the species-level BH fishing mortality calculated above to size specific mortalities for each species there are 2 options:
 
-1\) Get the current fishing mortalities for individuals over 20 cm, calculate a multiplier, multiply the multiplier by the mizer calculate size and species specific fishing mortalities:
+1\) Keep the shape of the current fishing mortality and rescale it. Compute the biomass-weighted mean F above the cutoff, form a multiplier, and apply it to the mizer size- and species-specific fishing mortalities:
 
-$Y_i=\int_{w_{20}=a20^b}^{w_{max}}{(\sum_g(S_{i,g}(w)Q_{i,g}E_g)N_i(w)wdw})$
+$Y_i=\int_{w_{c}}^{w_{max}}{(\sum_g(S_{i,g}(w)Q_{i,g}E_g)N_i(w)wdw})$
 
-$B_i=\int_{w_{20}=a20^b}^{w_{max}}{N_i(w)wdw}$
+$B_i=\int_{w_{c}}^{w_{max}}{N_i(w)wdw}$
 
 $F_i=Y_i/B_i$
 
@@ -164,206 +193,232 @@ $multiplier =F_{i,BH}/F_i$
 
 $F_{i,BH}(w)=multiplier*\sum_g(S_{i,g}(w)Q_{i,g}E_g)$
 
-2\) Multiply calculated species specific F Mort by the selectivity of the gears:
+2\) Multiply the species-specific target F by the peak-normalised selectivity of the gears, so that fully-selected individuals experience the target F:
 
-$F_{i,BH}(w)=F_{i,BH}*S_{i,g}(w)$
+$F_{i,BH}(w)=F_{i,BH}*\tilde{S}_{i}(w), \qquad \tilde{S}_{i}(w)=\frac{\sum_g S_{i,g}(w)Q_{i,g}}{\max_w \sum_g S_{i,g}(w)Q_{i,g}}$
 
-Here the projections of each option are shown for both models, with 10 years of steady state status quo projection, 10 years of blending into the new fishing mortalities, and 100 years of projection with the new mortalities $F_i=cP_i$, with c arbitrarily set to 0.1.
+### Which option expresses the policy?
+
+Option 1 rescales the fishing mortality that already exists. A species with zero status-quo F therefore stays unfished for the entire projection, and a species with a very small status-quo F receives a very large multiplier. Balanced harvest as a policy asks that *every* species be harvested in proportion to its productivity, irrespective of what the current fleet targets, so option 1 cannot express the rule for species the fleet does not currently fish. Option 2 has no such restriction, at the cost of imposing the existing selectivity shape at full intensity. Option 1 is used for the projections in the later sections because it stays closer to the status quo; option 2 is the one to use if the question involves currently untargeted species.
+
+Here the projections of each option are shown for both models, with 10 years of steady state status quo projection, 10 years of blending into the new fishing mortalities, and 100 years of projection with the new mortalities $F_i=c_PP_i$, with $c_P$ arbitrarily set to 0.1.
+
+Note that each blending function is given its own name. `setRateFunction()` stores the *name* of the rate function and looks it up in the global environment at every time step, so reusing one name across chunks would make every saved simulation refer to whichever closure was defined last.
 
 Type 1 FMort with vB model:
 
 ```{r}
-t_duration <-120
-og_sim_steady_in<-10
+t_duration <- 120
+og_sim_steady_in <- 10
 t_blend <- 20
 c_intensity <- 0.1
 
-my_blender <- make_blended_sBH_FMort(params_vB,
-                                     t_max_blend = t_blend, 
-                                     target_c = c_intensity,
-                                     t_steady = og_sim_steady_in,
-                                     alpha_max = 1,
-                                     Type_Fmort=1)
-sim_BH_start<- setRateFunction(params_vB, "FMort", "my_blender")
-sim_BH_1_vB <- project(sim_BH_start, t_max = t_duration, effort = 1)
+blender_bh1_vB <- make_blended_sBH_FMort(params_vB,
+                                         size = "length", length = l_cut,
+                                         t_max_blend = t_blend,
+                                         target_c = c_intensity,
+                                         t_steady = og_sim_steady_in,
+                                         alpha_max = 1,
+                                         Type_Fmort = 1)
+params_bh1_vB <- setRateFunction(params_vB, "FMort", "blender_bh1_vB")
+sim_BH_1_vB <- project(params_bh1_vB, t_max = t_duration, effort = 1)
 plotBiomass(sim_BH_1_vB)
-
 ```
 
 Type 2 FMort with vB model:
 
 ```{r}
-my_blender <- make_blended_sBH_FMort(params_vB,
-                                     t_max_blend = t_blend, 
-                                     target_c = c_intensity,
-                                     t_steady = og_sim_steady_in,
-                                     alpha_max = 1,
-                                     Type_Fmort=2)
-sim_BH_start<- setRateFunction(params_vB, "FMort", "my_blender")
-sim_BH_2_vB <- project(sim_BH_start, t_max = t_duration, effort = 1)
+blender_bh2_vB <- make_blended_sBH_FMort(params_vB,
+                                         size = "length", length = l_cut,
+                                         t_max_blend = t_blend,
+                                         target_c = c_intensity,
+                                         t_steady = og_sim_steady_in,
+                                         alpha_max = 1,
+                                         Type_Fmort = 2)
+params_bh2_vB <- setRateFunction(params_vB, "FMort", "blender_bh2_vB")
+sim_BH_2_vB <- project(params_bh2_vB, t_max = t_duration, effort = 1)
 plotBiomass(sim_BH_2_vB)
 ```
 
-Comparing the 2 models with different FMort calculations of the allometric model size spectra:
+Comparing the 2 FMort calculations for the vB model size spectra:
 
 ```{r}
-plotSpectra2(sim_BH_1_vB,sim_BH_2_vB)
+plotSpectra2(sim_BH_1_vB, sim_BH_2_vB, "Type 1", "Type 2")
 ```
 
 Type 1 FMort with allometric model:
 
 ```{r}
-my_blender <- make_blended_sBH_FMort(params_allometric,
-                                     t_max_blend = t_blend, 
-                                     target_c = c_intensity,
-                                     t_steady = og_sim_steady_in,
-                                     alpha_max = 1,
-                                     Type_Fmort=1)
-sim_BH_start<- setRateFunction(params_allometric, "FMort", "my_blender")
-sim_BH_1_allometric <- project(sim_BH_start, t_max = t_duration, effort = 1)
+blender_bh1_allo <- make_blended_sBH_FMort(params_allometric,
+                                           size = "length", length = l_cut,
+                                           t_max_blend = t_blend,
+                                           target_c = c_intensity,
+                                           t_steady = og_sim_steady_in,
+                                           alpha_max = 1,
+                                           Type_Fmort = 1)
+params_bh1_allo <- setRateFunction(params_allometric, "FMort", "blender_bh1_allo")
+sim_BH_1_allometric <- project(params_bh1_allo, t_max = t_duration, effort = 1)
 plotBiomass(sim_BH_1_allometric)
 ```
 
 Type 2 FMort with allometric model:
 
 ```{r}
-my_blender <- make_blended_sBH_FMort(params_allometric,
-                                     t_max_blend = t_blend, 
-                                     target_c = c_intensity,
-                                     t_steady = og_sim_steady_in,
-                                     alpha_max = 1,
-                                     Type_Fmort=2)
-sim_BH_start<- setRateFunction(params_allometric, "FMort", "my_blender")
-sim_BH_2_allometric <- project(sim_BH_start, t_max = t_duration, effort = 1)
+blender_bh2_allo <- make_blended_sBH_FMort(params_allometric,
+                                           size = "length", length = l_cut,
+                                           t_max_blend = t_blend,
+                                           target_c = c_intensity,
+                                           t_steady = og_sim_steady_in,
+                                           alpha_max = 1,
+                                           Type_Fmort = 2)
+params_bh2_allo <- setRateFunction(params_allometric, "FMort", "blender_bh2_allo")
+sim_BH_2_allometric <- project(params_bh2_allo, t_max = t_duration, effort = 1)
 plotBiomass(sim_BH_2_allometric)
 ```
 
-Comparing the 2 models with different FMort calculations of the allometric model size spectra:
+Comparing the 2 FMort calculations for the allometric model size spectra:
 
 ```{r}
-plotSpectra2(sim_BH_1_allometric,sim_BH_2_allometric)
+plotSpectra2(sim_BH_1_allometric, sim_BH_2_allometric, "Type 1", "Type 2")
 ```
 
 ## Projections Comparing the Methods
 
-First we will observe the projections of 120 years with 10 years of steady state projection, and 10 years of blending and 100 years with the alpha value derived from the production biomass relationship of the respective params object. $Y=cP^{\gamma}$ where the fishing mortality is given as: $F=c\frac{P^{\gamma}}{B}$.
+We now project 120 years — 10 years of status-quo steady state, 10 years of blending, and 100 years under the new rule $F=cP^{\gamma}/B$ — for $\gamma=1$ and for $\gamma=1+\alpha$ taken from each model's own biomass-production relationship.
 
 ```{r}
-plot_LogY_LogP(params_vB)
-plot_LogY_LogP(params_allometric)
+plot_LogY_LogP(params_vB, size = "length", length = l_cut)
+plot_LogY_LogP(params_allometric, size = "length", length = l_cut)
 ```
 
-### Status Quo?
+### Calibrating the harvest constant $c$
+
+Because $c$ absorbs the intercept of the $B$-$P$ fit, it cannot be carried over between models or between values of $\gamma$. We fix it by requiring that at the reference state the rule reproduce the observed total yield. Since $Y_i = cP_i^{\gamma}$,
+
+$$c = \frac{\sum_i Y_i^{\text{status quo}}}{\sum_i P_i^{\gamma}}.$$
 
 ```{r}
-getYield(params_vB)
-sum(getYield(params_vB))
-getYield(params_allometric)
-sum(getYield(params_allometric))
+calibrate_c <- function(params, gamma, length = l_cut) {
+    d <- Compute_Yield_Biomass_Production(params, size = "length", length = length)
+    sum(d$Yield) / sum(d$Production^gamma)
+}
+
+status_quo <- data.frame(
+    Model = c("vB", "allometric"),
+    Yield_total = c(
+        sum(Compute_Yield_Biomass_Production(params_vB, size = "length",
+                                             length = l_cut)$Yield),
+        sum(Compute_Yield_Biomass_Production(params_allometric, size = "length",
+                                             length = l_cut)$Yield)),
+    alpha = c(alpha_vB, alpha_allo),
+    c_gamma1 = c(calibrate_c(params_vB, 1), calibrate_c(params_allometric, 1)),
+    c_gammaDD = c(calibrate_c(params_vB, 1 + alpha_vB),
+                  calibrate_c(params_allometric, 1 + alpha_allo)))
+status_quo
 ```
 
-### Fixed Exploitation ($\gamma$=1)
+Each projection below is therefore calibrated so that the *initial* total yield matches the status quo. The interesting question is what happens to yield after 100 years, once the community has responded.
+
+### Fixed Exploitation ($\gamma$ = 1)
 
 ```{r}
-t_duration <-120
-og_sim_steady_in<-10
-t_blend <- 20
-c_intensity <- 0.1011
-y <- 1
+gamma_fixed <- 1
 
-my_blender <- make_blended_P_y(params_vB,
-                               t_max_blend = t_blend, 
-                               target_c = c_intensity,
-                               t_steady = og_sim_steady_in,
-                               alpha_max = 1,
-                               Type_Fmort=1,
-                               y=y)
-
-sim_BH_start<- setRateFunction(params_vB, "FMort", "my_blender")
-sim_P_y_1_fixed_vB <- project(sim_BH_start, t_max = t_duration, effort = 1)
+blender_fix_vB <- make_blended_P_y(params_vB,
+                                   size = "length", length = l_cut,
+                                   t_max_blend = t_blend,
+                                   target_c = calibrate_c(params_vB, gamma_fixed),
+                                   t_steady = og_sim_steady_in,
+                                   alpha_max = 1,
+                                   Type_Fmort = 1,
+                                   gamma = gamma_fixed)
+params_fix_vB <- setRateFunction(params_vB, "FMort", "blender_fix_vB")
+sim_P_y_1_fixed_vB <- project(params_fix_vB, t_max = t_duration, effort = 1)
 plotBiomass(sim_P_y_1_fixed_vB)
-plotSpectra2(params_vB,sim_P_y_1_fixed_vB)
+plotSpectra2(params_vB, sim_P_y_1_fixed_vB, "Status quo", "Fixed exploitation")
 plotFMort(sim_P_y_1_fixed_vB)
-plot_LogY_LogP(sim_P_y_1_fixed_vB)
-getYield(sim_P_y_1_fixed_vB)[120,]
-sum(getYield(sim_P_y_1_fixed_vB)[120,])
+plot_LogY_LogP(sim_P_y_1_fixed_vB, size = "length", length = l_cut)
+final_yield(sim_P_y_1_fixed_vB)
+sum(final_yield(sim_P_y_1_fixed_vB))
 ```
 
 ```{r}
-c_intensity <- 0.223
-
-my_blender <- make_blended_P_y(params_allometric,
-                               t_max_blend = t_blend, 
-                               target_c = c_intensity,
-                               t_steady = og_sim_steady_in,
-                               alpha_max = 1,
-                               Type_Fmort=1,
-                               y=y)
-
-sim_BH_start<- setRateFunction(params_allometric, "FMort", "my_blender")
-sim_P_y_1_fixed_allometric <- project(sim_BH_start, t_max = t_duration, effort = 1)
+blender_fix_allo <- make_blended_P_y(params_allometric,
+                                     size = "length", length = l_cut,
+                                     t_max_blend = t_blend,
+                                     target_c = calibrate_c(params_allometric, gamma_fixed),
+                                     t_steady = og_sim_steady_in,
+                                     alpha_max = 1,
+                                     Type_Fmort = 1,
+                                     gamma = gamma_fixed)
+params_fix_allo <- setRateFunction(params_allometric, "FMort", "blender_fix_allo")
+sim_P_y_1_fixed_allometric <- project(params_fix_allo, t_max = t_duration, effort = 1)
 plotBiomass(sim_P_y_1_fixed_allometric)
-plotSpectra2(params_allometric,sim_P_y_1_fixed_allometric)
+plotSpectra2(params_allometric, sim_P_y_1_fixed_allometric,
+             "Status quo", "Fixed exploitation")
 plotFMort(sim_P_y_1_fixed_allometric)
-plot_LogY_LogP(sim_P_y_1_fixed_allometric)
-getYield(sim_P_y_1_fixed_allometric)[120,]
-sum(getYield(sim_P_y_1_fixed_allometric)[120,])
+plot_LogY_LogP(sim_P_y_1_fixed_allometric, size = "length", length = l_cut)
+final_yield(sim_P_y_1_fixed_allometric)
+sum(final_yield(sim_P_y_1_fixed_allometric))
 ```
 
-### Full Density Dependence ($\gamma$ = 1.8)
+### Full Density Dependence ($\gamma = 1 + \alpha$)
+
+Each model uses its own fitted exponent: $\gamma=`r round(1 + alpha_vB, 3)`$ for the vB model and $\gamma=`r round(1 + alpha_allo, 3)`$ for the allometric model.
 
 ```{r}
-t_duration <-120
-og_sim_steady_in<-10
-t_blend <- 20
-c_intensity <- 0.0403
-y <- 1.888
+gamma_vB <- 1 + alpha_vB
 
-my_blender <- make_blended_P_y(params_vB,
-                               t_max_blend = t_blend, 
-                               target_c = c_intensity,
-                               t_steady = og_sim_steady_in,
-                               alpha_max = 1,
-                               Type_Fmort=1,
-                               y=y)
-
-sim_BH_start<- setRateFunction(params_vB, "FMort", "my_blender")
-sim_P_y_1_DD_vB <- project(sim_BH_start, t_max = t_duration, effort = 1)
+blender_dd_vB <- make_blended_P_y(params_vB,
+                                  size = "length", length = l_cut,
+                                  t_max_blend = t_blend,
+                                  target_c = calibrate_c(params_vB, gamma_vB),
+                                  t_steady = og_sim_steady_in,
+                                  alpha_max = 1,
+                                  Type_Fmort = 1,
+                                  gamma = gamma_vB)
+params_dd_vB <- setRateFunction(params_vB, "FMort", "blender_dd_vB")
+sim_P_y_1_DD_vB <- project(params_dd_vB, t_max = t_duration, effort = 1)
 plotBiomass(sim_P_y_1_DD_vB)
-plotSpectra2(params_vB,sim_P_y_1_DD_vB)
+plotSpectra2(params_vB, sim_P_y_1_DD_vB, "Status quo", "Balanced harvest")
 plotFMort(sim_P_y_1_DD_vB)
-plot_LogY_LogP(sim_P_y_1_DD_vB)
-getYield(sim_P_y_1_DD_vB)[120,]
-sum(getYield(sim_P_y_1_DD_vB)[120,])
+plot_LogY_LogP(sim_P_y_1_DD_vB, size = "length", length = l_cut)
+final_yield(sim_P_y_1_DD_vB)
+sum(final_yield(sim_P_y_1_DD_vB))
 ```
 
 ```{r}
-c_intensity <- 0.615
-y <- 1.7
-my_blender <- make_blended_P_y(params_allometric,
-                               t_max_blend = t_blend, 
-                               target_c = c_intensity,
-                               t_steady = og_sim_steady_in,
-                               alpha_max = 1,
-                               Type_Fmort=1,
-                               y=y)
+gamma_allo <- 1 + alpha_allo
 
-sim_BH_start<- setRateFunction(params_allometric, "FMort", "my_blender")
-sim_P_y_1_DD_allometric <- project(sim_BH_start, t_max = t_duration, effort = 1)
+blender_dd_allo <- make_blended_P_y(params_allometric,
+                                    size = "length", length = l_cut,
+                                    t_max_blend = t_blend,
+                                    target_c = calibrate_c(params_allometric, gamma_allo),
+                                    t_steady = og_sim_steady_in,
+                                    alpha_max = 1,
+                                    Type_Fmort = 1,
+                                    gamma = gamma_allo)
+params_dd_allo <- setRateFunction(params_allometric, "FMort", "blender_dd_allo")
+sim_P_y_1_DD_allometric <- project(params_dd_allo, t_max = t_duration, effort = 1)
 plotBiomass(sim_P_y_1_DD_allometric)
-plotSpectra2(params_allometric,sim_P_y_1_DD_allometric)
+plotSpectra2(params_allometric, sim_P_y_1_DD_allometric,
+             "Status quo", "Balanced harvest")
 plotFMort(sim_P_y_1_DD_allometric)
-plot_LogY_LogP(sim_P_y_1_DD_allometric)
-
-getYield(sim_P_y_1_DD_allometric)[120,]
-sum(getYield(sim_P_y_1_DD_allometric)[120,])
+plot_LogY_LogP(sim_P_y_1_DD_allometric, size = "length", length = l_cut)
+final_yield(sim_P_y_1_DD_allometric)
+sum(final_yield(sim_P_y_1_DD_allometric))
 ```
 
 ### End Note
 
 I already have the projection code ready for each of these options which I can share the results of to you all. Let me know whether you would like me to present the projections or would like me to make changes to the implementation so that I can change the code/implementation before presenting the specific projections.
 
-Things that still need to be addressed, which are slightly off topic:
+Things that still need to be addressed:
 
--   The allometric model has species going extinct when fishing mortality is removed: as such some preliminary projections of BH are showing extinctions due to reduced fishing mortality (the same species are going extinct when fishing is removed as are going extinct when BH is implemented), this is not an issue for the vonBertalanffy model.
--   Will wait for the final model from Gustav before running and long computations observing the optimal combination of c and gamma values.
+- Whether option 1 or option 2 is the right way to spread species-level F over sizes. Option 1 cannot fish a species the fleet does not currently target, which is a real restriction on the policy question; option 2 imposes the existing selectivity shape at full intensity.
+
+- Whether the reference-state equivalence between $F=c_PP$ and $F=cP^{1+\alpha}/B$ is close enough over 100 years to treat the second as a balanced-harvest implementation, given the drift in $\alpha$ shown above.
+
+- The allometric model has species going extinct when fishing mortality is removed: as such some preliminary projections of BH are showing extinctions due to reduced fishing mortality (the same species are going extinct when fishing is removed as are going extinct when BH is implemented), this is not an issue for the vonBertalanffy model. This should be resolved before the BH projections are interpreted, since a model that loses species at `effort = 0` is not at a stable steady state and the 100-year projections inherit that.
+
+- Will wait for the final model from Gustav before running any long computations observing the optimal combination of $c$ and $\gamma$ values.
